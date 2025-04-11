@@ -23,6 +23,8 @@ export const ButtonCopagro: React.FC<ButtonCopagroProps> = ({
   );
 };
 
+export default ButtonCopagro;
+
 const styles = StyleSheet.create({
   button: {
     backgroundColor: '#028C48',

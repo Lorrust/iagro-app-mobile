@@ -25,6 +25,8 @@ export const LogoCopagro: React.FC<LogoSistemaProps> = ({
   );
 };
 
+export default LogoCopagro;
+
 const styles = StyleSheet.create({
   logo: {
     alignSelf: 'center',    
