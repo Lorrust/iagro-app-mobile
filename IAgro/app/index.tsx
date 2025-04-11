@@ -1,5 +1,5 @@
 import React, { useLayoutEffect } from 'react';
-import { ImageBackground, StyleSheet } from 'react-native';
+import { ImageBackground, StyleSheet, View, Text } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { BlurView } from 'expo-blur';
 import { LogoCopagro } from './components/LogoCopagro';
@@ -20,11 +20,26 @@ export default function HomeScreen() {
       resizeMode="cover"
     >
       <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFill} />
-      <LogoCopagro />
-      <ButtonCopagro
-        text="→"
-        onPress={() => navigation.navigate('LoginSys')}
-      />
+
+      {/* Logo no topo */}
+      <View>
+        <LogoCopagro />
+      </View>
+
+      {/* Texto e botão embaixo */}
+      <View style={styles.bottomContainer}>
+        <View style={styles.textContainer}>
+          <Text style={styles.welcomeText}>Bem-vindo a IAgro</Text>
+          <Text style={styles.descriptionText}>
+            Faça suas consultas e encontre a solução de seus problemas agro!
+          </Text>
+        </View>
+
+        <ButtonCopagro
+          text="→"
+          onPress={() => navigation.navigate('LoginSys')}
+        />
+      </View>
     </ImageBackground>
   );
 }
@@ -32,7 +47,31 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   background: {
     flex: 1,
-    justifyContent: 'flex-start',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 60,
+  },
+  bottomContainer: {
+    alignItems: 'center',
+    width: '100%',
+  },
+  textContainer: {
+    backgroundColor: 'rgba(92, 92, 92, 0.3)',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+    alignItems: 'center',
+  },
+  welcomeText: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  descriptionText: {
+    color: '#fff',
+    fontSize: 14,
+    textAlign: 'center',
   },
 });
