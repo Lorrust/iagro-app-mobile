@@ -3,7 +3,7 @@ import { ImageBackground, StyleSheet, View, Text } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { BlurView } from 'expo-blur';
 import { LogoCopagro } from './components/LogoCopagro';
-import { ButtonCopagro } from './components/Buttom';
+import { ButtonCopagro } from './components/Button';
 import { StackNavigationProp } from '@react-navigation/stack';
 
 export default function HomeScreen() {
@@ -36,7 +36,7 @@ export default function HomeScreen() {
         </View>
 
         <ButtonCopagro
-          text="→"
+          icon = "arrow-right"
           onPress={() => navigation.navigate('LoginSys')}
         />
       </View>
@@ -58,20 +58,20 @@ const styles = StyleSheet.create({
   },
   textContainer: {
     backgroundColor: 'rgba(92, 92, 92, 0.3)',
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
-    marginBottom: 24,
+    marginBottom: 30,
     alignItems: 'center',
   },
   welcomeText: {
     color: '#fff',
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 8,
   },
   descriptionText: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: 18,
     textAlign: 'center',
   },
 });

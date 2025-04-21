@@ -9,6 +9,8 @@ import {
   SafeAreaView,
 } from 'react-native';
 import LogoCopagro from './components/LogoCopagro';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { ButtonCopagroText } from './components/ButtonTxt';
 
 export default function SettingsScreen() {
   const [email, setEmail] = useState('');
@@ -51,12 +53,14 @@ export default function SettingsScreen() {
             <Text style={styles.forgotText}>Esqueceu a senha?</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.button}>
-            <Text style={styles.buttonText}>Entrar</Text>
-          </TouchableOpacity>
+          <ButtonCopagroText
+            onPress={() => console.log('Login pressed')}
+            label="Entrar"
+          />
         </ScrollView>
 
-        <TouchableOpacity style={styles.registerButton}>
+        <TouchableOpacity style={[styles.registerButton, { flexDirection: 'column' }]}>
+          <MaterialCommunityIcons name="chevron-up" size={40} color="#fff" />
           <Text style={styles.registerText}>Cadastre-se</Text>
         </TouchableOpacity>
       </View>
@@ -67,7 +71,7 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#black',
   },
   container: {
     flex: 1,
@@ -81,7 +85,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 25,
     fontWeight: 'bold',
-    color: '#008000',
+    color: '#028C48',
     marginTop: 150,
   },
   subtitle: {
@@ -101,7 +105,7 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: '#008000',
+    borderColor: '#028C48',
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 10,
@@ -113,24 +117,16 @@ const styles = StyleSheet.create({
     textDecorationLine: 'underline',
     alignSelf: 'flex-end',
   },
-  button: {
-    backgroundColor: '#008000',
-    borderRadius: 20,
-    paddingVertical: 12,
-    paddingHorizontal: 32,
-    marginTop: 24,
-    width: '60%',
-    alignItems: 'center',
-  },
   buttonText: {
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 16,
   },
   registerButton: {
-    backgroundColor: '#007100',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    backgroundColor: '#028C48',
+    borderTopLeftRadius: 36,
+    borderTopRightRadius: 36,
+    paddingTop: 1,
     paddingVertical: 16,
     alignItems: 'center',
     width: '80%',
@@ -139,6 +135,6 @@ const styles = StyleSheet.create({
   registerText: {
     color: '#fff',
     fontWeight: 'bold',
-    fontSize: 16,
+    fontSize: 20,
   },
 });
