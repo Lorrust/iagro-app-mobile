@@ -20,6 +20,8 @@ export const ButtonCopagroText: React.FC<ButtonCopagroTextProps> = ({ onPress, l
       </Button>
     );
   };
+
+  export default ButtonCopagroText;
   
   const styles = StyleSheet.create({
     button: {

@@ -10,15 +10,12 @@ import {
   Animated,
   Dimensions,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
 import LogoCopagro from './components/LogoCopagro';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { ButtonCopagroText } from './components/ButtonTxt';
 
 const screenHeight = Dimensions.get('window').height;
 
-export default function SettingsScreen() {
-  const navigation = useNavigation();
+export default function SignInSys() {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [registerVisible, setRegisterVisible] = useState(false);
@@ -46,9 +43,8 @@ export default function SettingsScreen() {
     <SafeAreaView style={styles.safeArea}>
       <Animated.View style={[styles.container, { transform: [{ translateY }] }]}>
         {/* TELA DE LOGIN */}
-        <LogoCopagro />
-
         <ScrollView contentContainerStyle={styles.scrollContent}>
+          <LogoCopagro />
 
           <Text style={styles.title}>Login</Text>
           <Text style={styles.subtitle}>
@@ -88,11 +84,7 @@ export default function SettingsScreen() {
         </ScrollView>
 
         {/* BOTÃO CADASTRE-SE */}
-        <TouchableOpacity
-          style={[styles.registerButton, { flexDirection: 'column' }]}
-          onPress={animateUp}
-        >
-          <MaterialCommunityIcons name="chevron-up" size={40} color="#fff" />
+        <TouchableOpacity style={styles.registerButton} onPress={animateUp}>
           <Text style={styles.registerText}>Cadastre-se</Text>
         </TouchableOpacity>
       </Animated.View>
@@ -100,11 +92,8 @@ export default function SettingsScreen() {
       {/* TELA DE CADASTRO */}
       {registerVisible && (
         <Animated.View style={[styles.registerScreen, { transform: [{ translateY }] }]}>
-
           <ScrollView contentContainerStyle={styles.scrollContent}>
-
-          <LogoCopagro/>
-
+            <LogoCopagro />
             <Text style={styles.title}>Cadastro</Text>
             <Text style={styles.subtitle}>Conte-nos um pouco sobre você...</Text>
 
@@ -147,8 +136,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   scrollContent: {
-    flexGrow: 1,
-    justifyContent: 'flex-start',
+    paddingTop: 60,
     paddingHorizontal: 24,
     alignItems: 'center',
   },
@@ -156,7 +144,7 @@ const styles = StyleSheet.create({
     fontSize: 25,
     fontWeight: 'bold',
     color: '#028C48',
-    marginTop: 180,
+    marginTop: 150,
   },
   subtitle: {
     fontSize: 15,
@@ -165,8 +153,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   inputGroup: {
-    width: '100%',
-    maxWidth: 350,
+    width: '70%',
     alignSelf: 'center',
   },
   label: {
@@ -184,20 +171,19 @@ const styles = StyleSheet.create({
   },
   forgotText: {
     color: '#444',
-    marginBottom: 10,
+    marginTop: 10,
     textDecorationLine: 'underline',
     alignSelf: 'flex-end',
-    marginRight: 16,
   },
   registerButton: {
     backgroundColor: '#028C48',
     borderTopLeftRadius: 36,
     borderTopRightRadius: 36,
+    paddingTop: 1,
     paddingVertical: 16,
     alignItems: 'center',
-    width: '100%',
-    position: 'absolute',
-    bottom: 0,
+    width: '80%',
+    alignSelf: 'center',
   },
   registerText: {
     color: '#fff',

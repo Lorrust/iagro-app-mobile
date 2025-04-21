@@ -24,6 +24,8 @@ export const ButtonCopagro: React.FC<ButtonCopagroProps> = ({ icon, onPress, lab
   );
 };
 
+export default ButtonCopagro;
+
 const styles = StyleSheet.create({
   button: {
     borderRadius: 34,
