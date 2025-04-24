@@ -48,7 +48,7 @@ export default function SettingsScreen() {
         {/* TELA DE LOGIN */}
         <LogoCopagro />
 
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={styles.centeredContent}>
 
           <Text style={styles.title}>Login</Text>
           <Text style={styles.subtitle}>
@@ -85,7 +85,7 @@ export default function SettingsScreen() {
             onPress={() => console.log('Login pressed')}
             label="Entrar"
           />
-        </ScrollView>
+        </View>
 
         {/* BOTÃO CADASTRE-SE */}
         <TouchableOpacity
@@ -164,6 +164,12 @@ const styles = StyleSheet.create({
     marginVertical: 8,
     textAlign: 'center',
   },
+  centeredContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },  
   inputGroup: {
     width: '100%',
     maxWidth: 350,
