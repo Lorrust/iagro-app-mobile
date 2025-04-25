@@ -1,18 +1,11 @@
 import React, { useLayoutEffect } from 'react';
 import { ImageBackground, StyleSheet, View, Text } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { router } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import { LogoCopagro } from './components/LogoCopagro';
 import { ButtonCopagro } from './components/Button';
-import { StackNavigationProp } from '@react-navigation/stack';
 
 export default function HomeScreen() {
-  const navigation = useNavigation<StackNavigationProp<any>>();
-
-  useLayoutEffect(() => {
-    navigation.setOptions({ headerShown: false });
-  }, [navigation]);
-
   return (
     <ImageBackground
       source={require('../assets/images/colheitadeira.jpg')}
@@ -37,7 +30,7 @@ export default function HomeScreen() {
 
         <ButtonCopagro
           icon = "arrow-right"
-          onPress={() => navigation.navigate('LoginSys')}
+          onPress={() => router.push('/Auth/SignInSys')}
         />
       </View>
     </ImageBackground>

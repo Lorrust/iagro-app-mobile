@@ -9,7 +9,7 @@ type LogoSistemaProps = {
 
 export const LogoCopagro: React.FC<LogoSistemaProps> = ({
   width = 400,
-  height = 400,
+  height = 350,
   style,
 }) => {
   return (

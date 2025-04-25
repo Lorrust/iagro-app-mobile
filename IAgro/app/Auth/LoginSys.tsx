@@ -10,12 +10,15 @@ import {
   Animated,
   Dimensions,
 } from 'react-native';
-import LogoCopagro from './components/LogoCopagro';
-import { ButtonCopagroText } from './components/ButtonTxt';
+import { useNavigation } from '@react-navigation/native';
+import LogoCopagro from '../components/LogoCopagro';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { ButtonCopagroText } from '../components/ButtonTxt';
 
 const screenHeight = Dimensions.get('window').height;
 
-export default function SignInSys() {
+export default function SettingsScreen() {
+  const navigation = useNavigation();
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [registerVisible, setRegisterVisible] = useState(false);
@@ -43,8 +46,9 @@ export default function SignInSys() {
     <SafeAreaView style={styles.safeArea}>
       <Animated.View style={[styles.container, { transform: [{ translateY }] }]}>
         {/* TELA DE LOGIN */}
+        <LogoCopagro />
+
         <ScrollView contentContainerStyle={styles.scrollContent}>
-          <LogoCopagro />
 
           <Text style={styles.title}>Login</Text>
           <Text style={styles.subtitle}>
@@ -84,7 +88,11 @@ export default function SignInSys() {
         </ScrollView>
 
         {/* BOTÃO CADASTRE-SE */}
-        <TouchableOpacity style={styles.registerButton} onPress={animateUp}>
+        <TouchableOpacity
+          style={[styles.registerButton, { flexDirection: 'column' }]}
+          onPress={animateUp}
+        >
+          <MaterialCommunityIcons name="chevron-up" size={40} color="#fff" />
           <Text style={styles.registerText}>Cadastre-se</Text>
         </TouchableOpacity>
       </Animated.View>
@@ -92,8 +100,11 @@ export default function SignInSys() {
       {/* TELA DE CADASTRO */}
       {registerVisible && (
         <Animated.View style={[styles.registerScreen, { transform: [{ translateY }] }]}>
+
           <ScrollView contentContainerStyle={styles.scrollContent}>
-            <LogoCopagro />
+
+          <LogoCopagro/>
+
             <Text style={styles.title}>Cadastro</Text>
             <Text style={styles.subtitle}>Conte-nos um pouco sobre você...</Text>
 
@@ -136,7 +147,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   scrollContent: {
-    paddingTop: 60,
+    flexGrow: 1,
+    justifyContent: 'flex-start',
     paddingHorizontal: 24,
     alignItems: 'center',
   },
@@ -144,7 +156,7 @@ const styles = StyleSheet.create({
     fontSize: 25,
     fontWeight: 'bold',
     color: '#028C48',
-    marginTop: 150,
+    marginTop: 180,
   },
   subtitle: {
     fontSize: 15,
@@ -153,7 +165,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   inputGroup: {
-    width: '70%',
+    width: '100%',
+    maxWidth: 350,
     alignSelf: 'center',
   },
   label: {
@@ -171,19 +184,20 @@ const styles = StyleSheet.create({
   },
   forgotText: {
     color: '#444',
-    marginTop: 10,
+    marginBottom: 10,
     textDecorationLine: 'underline',
     alignSelf: 'flex-end',
+    marginRight: 16,
   },
   registerButton: {
     backgroundColor: '#028C48',
     borderTopLeftRadius: 36,
     borderTopRightRadius: 36,
-    paddingTop: 1,
     paddingVertical: 16,
     alignItems: 'center',
-    width: '80%',
-    alignSelf: 'center',
+    width: '100%',
+    position: 'absolute',
+    bottom: 0,
   },
   registerText: {
     color: '#fff',
