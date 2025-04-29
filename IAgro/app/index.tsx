@@ -30,7 +30,7 @@ export default function HomeScreen() {
 
         <ButtonCopagro
           icon = "arrow-right"
-          onPress={() => router.push('/Auth/SignInSys')}
+          onPress={() => router.push('/Auth/LoginSys')}
         />
       </View>
     </ImageBackground>

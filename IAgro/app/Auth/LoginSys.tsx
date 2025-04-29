@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,20 +10,55 @@ import {
   Animated,
   Dimensions,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { router } from 'expo-router';
 import LogoCopagro from '../components/LogoCopagro';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { ButtonCopagroText } from '../components/ButtonTxt';
+import axiosService from '../../services/axiosService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const screenHeight = Dimensions.get('window').height;
 
 export default function SettingsScreen() {
-  const navigation = useNavigation();
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [registerVisible, setRegisterVisible] = useState(false);
+  const [loginPressed, setLoginPressed] = useState(false);
 
   const translateY = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const authenticate = async () => {
+      if (!loginPressed) return;
+
+      try {
+        const response = await axiosService.post('/auth/login', {
+          email: email,
+          password: senha,
+        });
+
+        console.log('Login realizado com sucesso!', response);
+
+        // Salva o usuário completo no AsyncStorage
+        await AsyncStorage.setItem('user', JSON.stringify(response));
+
+        // Salva também id-company separadamente, se necessário
+        if (response?.companyId) {
+          await AsyncStorage.setItem('id-company', response.companyId.toString());
+        }
+
+        // Navega para Home
+        router.push('/Screens/Home');
+
+      } catch (error) {
+        console.error('Erro no login:', error);
+      } finally {
+        setLoginPressed(false);
+      }
+    };
+
+    authenticate();
+  }, [loginPressed]);
 
   const animateUp = () => {
     setRegisterVisible(true);
@@ -49,7 +84,6 @@ export default function SettingsScreen() {
         <LogoCopagro />
 
         <View style={styles.centeredContent}>
-
           <Text style={styles.title}>Login</Text>
           <Text style={styles.subtitle}>
             Faça o login para realizar suas consultas...
@@ -63,6 +97,7 @@ export default function SettingsScreen() {
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
+              autoCapitalize="none"
             />
           </View>
 
@@ -82,7 +117,7 @@ export default function SettingsScreen() {
           </TouchableOpacity>
 
           <ButtonCopagroText
-            onPress={() => console.log('Login pressed')}
+            onPress={() => setLoginPressed(true)}
             label="Entrar"
           />
         </View>
@@ -100,10 +135,8 @@ export default function SettingsScreen() {
       {/* TELA DE CADASTRO */}
       {registerVisible && (
         <Animated.View style={[styles.registerScreen, { transform: [{ translateY }] }]}>
-
           <ScrollView contentContainerStyle={styles.scrollContent}>
-
-          <LogoCopagro/>
+            <LogoCopagro />
 
             <Text style={styles.title}>Cadastro</Text>
             <Text style={styles.subtitle}>Conte-nos um pouco sobre você...</Text>
