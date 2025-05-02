@@ -1,0 +1,54 @@
+import React from 'react';
+import { Button } from 'react-native-paper';
+import { StyleSheet } from 'react-native';
+
+interface ButtonCopagroProps {
+  icon?: string;
+  onPress: () => void;
+  label?: string;
+  disabled?: boolean;
+}
+
+export const ButtonCopagro: React.FC<ButtonCopagroProps> = ({ icon, onPress, label = '' }) => {
+  return (
+    <Button
+      mode="contained"
+      icon={icon}
+      onPress={onPress}
+      contentStyle={styles.content}
+      labelStyle={styles.label}
+      style={styles.button}
+      buttonColor='#028C48' 
+    >
+      {label}
+    </Button>
+  );
+};
+
+export default ButtonCopagro;
+
+const styles = StyleSheet.create({
+  button: {
+    borderRadius: 34,
+    width: '60%',
+    alignSelf: 'center', 
+  },
+  content: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+    paddingVertical: 3, 
+  },
+  label: {
+    fontSize: 20,
+  },
+  icon: {
+    alignSelf: 'center',
+  },
+});
+
+interface ButtonCopagroTextProps {
+  onPress: () => void;
+  label: string;
+}
