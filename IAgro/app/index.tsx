@@ -1,5 +1,5 @@
 import React, { useLayoutEffect } from 'react';
-import { ImageBackground, StyleSheet, View, Text } from 'react-native';
+import { ImageBackground, StyleSheet, View, Text, Button } from 'react-native';
 import { router } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import { LogoCopagro } from './components/LogoCopagro';
@@ -29,7 +29,7 @@ export default function HomeScreen() {
         </View>
 
         <ButtonCopagro
-          icon = "arrow-right"
+          label="->"
           onPress={() => router.push('/Auth/LoginSys')}
         />
       </View>

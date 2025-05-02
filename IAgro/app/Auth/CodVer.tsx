@@ -1,10 +1,13 @@
+// ESTE CODIGO NAO ESTA SENDO UTILIZADO, APENAS PARA REFERENCIA CASO UM DIA QUEIRAMOS VOLTAR A USAR O CODIGO DE VERIFICACAO
+
+
 import React from 'react';
 import { ImageBackground, StyleSheet, View, Text } from 'react-native';
 import { router } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import { LogoCopagro } from '../components/LogoCopagro';
-import ButtonCopagroText from '../components/ButtonTxt';
-import { TextInput } from 'react-native-paper';
+import { ButtonCopagro } from '../components/Button';
+import { TextInputCopagro } from '../components/ButtonTxt';
 
 export default function ForgotPassword() {
   return (
@@ -31,16 +34,11 @@ export default function ForgotPassword() {
             Um e-mail foi enviado para você com o código de verificação.
           </Text>
 
-          <TextInput
-            mode="outlined"
-            label="Codigo de verificação"
-            placeholder="Redefina sua senha"
-            style={styles.input}
-            outlineColor="#ccc"
-            activeOutlineColor="#0B845C"
+          <TextInputCopagro
+            placeholder="Codigo de verificação"
           />
 
-          <ButtonCopagroText
+          <ButtonCopagro
             label="Redefinir senha"
             onPress={() => router.push('/Auth/NewPsswrd')}
           />

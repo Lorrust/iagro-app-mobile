@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router'; // ou ajuste conforme seu roteamento
 
 const axiosInstance = axios.create({
-  baseURL: 'http://127.0.0.1:3000', // ajuste conforme seu back-end
+  baseURL: 'http://192.168.100.213:3000', // ajuste conforme seu back-end
   headers: {
     'Content-Type': 'application/json',
     'X-Requested-With': 'XMLHttpRequest',
@@ -20,7 +20,7 @@ axiosInstance.interceptors.response.use(
       await AsyncStorage.removeItem('id-company');
 
       // Redireciona para tela de login
-      router.replace('/Screens/Login'); // use 'replace' para não voltar ao Home
+      router.replace('/Auth/LoginSys'); // use 'replace' para não voltar ao Home
     }
     return Promise.reject(error);
   }

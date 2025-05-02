@@ -6,6 +6,7 @@ interface ButtonCopagroProps {
   icon?: string;
   onPress: () => void;
   label?: string;
+  disabled?: boolean;
 }
 
 export const ButtonCopagro: React.FC<ButtonCopagroProps> = ({ icon, onPress, label = '' }) => {
@@ -36,11 +37,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    width: '110%',
+    width: '100%',
     paddingVertical: 3, 
   },
   label: {
-    fontSize: 30,
+    fontSize: 20,
   },
   icon: {
     alignSelf: 'center',

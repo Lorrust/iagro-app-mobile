@@ -1,10 +1,13 @@
+// ESTE CODIGO NAO ESTA SENDO UTILIZADO, APENAS PARA REFERENCIA CASO UM DIA QUEIRAMOS VOLTAR A USAR O CODIGO DE VERIFICACAO
+
+
 import React from 'react';
 import { ImageBackground, StyleSheet, View, Text } from 'react-native';
 import { router } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import { LogoCopagro } from '../components/LogoCopagro';
-import ButtonCopagroText from '../components/ButtonTxt';
-import { TextInput } from 'react-native-paper';
+import { ButtonCopagro } from '../components/Button';
+import { TextInputCopagro } from '../components/ButtonTxt';
 
 export default function ForgotPassword() {
   return (
@@ -27,25 +30,17 @@ export default function ForgotPassword() {
           <Text style={styles.RedefinirSenha}>
             Sua nova senha deve conter no mínimo 8 caracteres, incluindo letras e números.
           </Text>
-          <TextInput
-            mode="outlined"
+          <TextInputCopagro
             label="Nova senha"
             placeholder="8 caracteres com letras e números"
-            style={styles.input}
-            outlineColor="#ccc"
-            activeOutlineColor="#0B845C"
           />
-          <TextInput
-            mode="outlined"
+          <TextInputCopagro
             label="Confirme sua nova senha"
-            placeholder="Deve ser igual a senha anterior"
-            style={styles.input}
-            outlineColor="#ccc"
-            activeOutlineColor="#0B845C"
+            placeholder="Deve ser igual a senha digitada acima"
           />
-          <ButtonCopagroText
+          <ButtonCopagro
             label="Confirmar"
-            onPress={() => router.push('/Auth/SignInSys')}
+            onPress={() => router.push('../Auth/LoginSys')}
           />
         </View>
       </View>

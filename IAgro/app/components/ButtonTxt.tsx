@@ -1,45 +1,38 @@
-import React from 'react';
-import { Button } from 'react-native-paper';
+import { TextInput, TextInputProps } from 'react-native-paper';
 import { StyleSheet } from 'react-native';
+import React from 'react';
 
-interface ButtonCopagroTextProps {
-  onPress: () => void;
-  label?: string;
+interface TextInputCopagroProps extends Omit<TextInputProps, 'style' | 'theme' | 'mode'> {
+  // You can add custom props here if needed in the future
 }
-export const ButtonCopagroText: React.FC<ButtonCopagroTextProps> = ({ onPress, label }) => {
-    return (
-      <Button
-        mode="contained"
-        onPress={onPress}
-        contentStyle={styles.content}
-        labelStyle={styles.label}
-        style={styles.button}
-        buttonColor='#028C48' 
-      >
-        {label}
-      </Button>
-    );
+
+export const TextInputCopagro: React.FC<TextInputCopagroProps> = ({
+  ...rest // Capture all other standard TextInputProps (value, onChangeText, placeholder, etc.)
+}) => {
+  // Define internal theme for roundness using react-native-paper's theme structure
+  const customInputTheme = {
+    roundness: 33
   };
 
-  export default ButtonCopagroText;
-  
-  const styles = StyleSheet.create({
-    button: {
-      borderRadius: 34,
-      width: '60%',
-      marginTop: 55,
-      alignSelf: 'center', 
-    },
-    content: {
-      flexDirection: 'row',
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    label: {
-      fontSize: 14,
-    },
-    icon: {
-      alignSelf: 'center',
-    },
-  });
-  
+  return (
+    <TextInput
+      mode="outlined"
+      style={styles.input} 
+      theme={customInputTheme}
+      outlineColor="#ccc" 
+      activeOutlineColor="#0B845C" 
+      {...rest} // Spread the rest of the props to the TextInput component
+    />
+  );
+};
+
+const styles = StyleSheet.create({
+  input: {
+    width: '100%', 
+    backgroundColor: 'white', 
+    fontSize: 16, 
+    color: '#000',
+  },
+});
+
+export default TextInputCopagro;
