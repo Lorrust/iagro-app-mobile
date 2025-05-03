@@ -6,8 +6,7 @@ export default function Layout() {
       <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="Auth/LoginSys" options={{ title: "Login" }} />
       <Stack.Screen name="Auth/ForgotPsswrd" options={{ title: "Modificar Senha" }} />
-      <Stack.Screen name="Auth/CodVer" options={{ title: "Código de Verificação" }} />
-      <Stack.Screen name="Auth/NewPsswrd" options={{ title: "Nova Senha" }} />
+      <Stack.Screen name="Screens/Home" options={{ headerShown: false }} />
     </Stack>
   );
 }
