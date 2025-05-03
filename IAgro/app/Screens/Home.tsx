@@ -1,15 +1,46 @@
-import React from 'react';
-import { View, StyleSheet, Image, Text } from 'react-native';
+import React, { useState } from 'react';
+import { View, StyleSheet, Image, Text, Alert } from 'react-native';
 import { TextInput, IconButton, Surface } from 'react-native-paper';
 import LogoCopagroUsers from '../components/LogoCopagroUsers';
+import { launchCamera } from 'react-native-image-picker';
 
 const IntroScreen = () => {
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
+    
+  const handleOpenCamera = () => {
+    const options = {
+      mediaType: 'photo' as const,
+      saveToPhotos: true,
+      cameraType: 'back' as const,
+    };
+
+    launchCamera(options, response => {
+        if (response.errorCode === 'camera_unavailable') {
+            Alert.alert('Erro', 'Câmera indisponível');
+        } else if (response.errorCode === 'permission') {
+            Alert.alert('Erro', 'Permissão da câmera não concedida');
+        } else if (response.errorCode === 'others') {
+            Alert.alert('Erro', 'Erro desconhecido: ' + response.errorMessage);
+        }
+      if (response.didCancel) {
+        console.log('Usuário cancelou a câmera');
+      } else if (response.errorCode) {
+        Alert.alert('Erro', response.errorMessage || 'Erro ao abrir câmera');
+      } else {
+        const photo = response.assets?.[0];
+        if (photo?.uri) {
+          setPhotoUri(photo.uri);
+        }
+      }
+    });
+  };
+
   return (
-      <View style={styles.container}>
+    <View style={styles.container}>
       {/* Logo no topo */}
-        <View>
-            <LogoCopagroUsers/>
-        </View>
+      <View>
+        <LogoCopagroUsers />
+      </View>
 
       {/* Search Bar */}
       <Surface style={styles.searchContainer}>
@@ -22,33 +53,70 @@ const IntroScreen = () => {
         />
       </Surface>
 
-      {/* Illustration  */}
+      {/* Illustration */}
+      {!photoUri && (
         <Image
           source={require('../../assets/images/intro.png')}
-            style={styles.illustration}
-            resizeMode="contain"
+          style={styles.illustration}
+          resizeMode="contain"
         />
+      )}
 
       {/* Description */}
-        <Text style={styles.description}>
+      {!photoUri && (
+        <>
+          <Text style={styles.description}>
             Análises e consultas fenológicas aparecerão {'\n'} aqui após sua primeira foto
-        </Text>
+          </Text>
+          <Image
+            source={require('../../assets/images/seta.png')}
+            style={styles.seta}
+          />
+        </>
+      )}
 
-        <Image 
-          source={require('../../assets/images/seta.png')} 
-            style={styles.seta} 
+      {/* Mostra a foto tirada */}
+      {photoUri && (
+        <View style={{ alignItems: 'center' }}>
+          <Image
+            source={{ uri: photoUri }}
+            style={{ width: 300, height: 400, marginTop: 20, borderRadius: 10 }}
+            resizeMode="cover"
+          />
+          <View style={{ flexDirection: 'row', marginTop: 20 }}>
+            <IconButton
+              icon="check"
+              size={36}
+              onPress={() => {
+                console.log('Foto confirmada:', photoUri);
+                // Aqui você pode enviar a imagem para o backend ou salvar localmente
+              }}
+              style={{ backgroundColor: 'green', marginRight: 20 }}
+              iconColor="#fff"
+            />
+            <IconButton
+              icon="camera-retake"
+              size={36}
+              onPress={() => setPhotoUri(null)}
+              style={{ backgroundColor: 'red' }}
+              iconColor="#fff"
+            />
+          </View>
+        </View>
+      )}
+
+      {/* Botão da câmera (só mostra se nenhuma foto foi tirada) */}
+      {!photoUri && (
+        <IconButton
+          icon="camera"
+          size={36}
+          mode="contained"
+          containerColor="#D9D9D9"
+          iconColor="#ffffff"
+          onPress={handleOpenCamera}
+          style={styles.cameraButton}
         />
-
-      {/* Camera Button */}
-      <IconButton
-        icon="camera"
-        size={36} 
-        mode="contained"
-        containerColor="#D9D9D9"
-        iconColor="#ffffff"
-        onPress={() => console.log('Abrir câmera')}
-        style={styles.cameraButton}
-     />
+      )}
     </View>
   );
 };
@@ -79,7 +147,7 @@ const styles = StyleSheet.create({
   illustration: {
     width: '100%',
     height: 450,
-    marginTop: 90   ,
+    marginTop: 90,
   },
   seta: {
     width: 30,
@@ -108,7 +176,7 @@ const styles = StyleSheet.create({
   cameraIcon: {
     width: 39,
     height: 39,
-  },  
+  },
 });
 
 export default IntroScreen;
