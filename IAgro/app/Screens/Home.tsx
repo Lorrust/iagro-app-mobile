@@ -1,70 +1,58 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Image, Text, Alert } from 'react-native';
+import { View, StyleSheet, Image, Text } from 'react-native';
 import { TextInput, IconButton, Surface } from 'react-native-paper';
 import LogoCopagroUsers from '../components/LogoCopagroUsers';
-import { launchCamera } from 'react-native-image-picker';
+import CameraCapture from '../components/CreateCapture';
 
 const IntroScreen = () => {
   const [photoUri, setPhotoUri] = useState<string | null>(null);
-    
-  const handleOpenCamera = () => {
-    const options = {
-      mediaType: 'photo' as const,
-      saveToPhotos: true,
-      cameraType: 'back' as const,
-    };
+  const [isCameraVisible, setIsCameraVisible] = useState(false);
 
-    launchCamera(options, response => {
-        if (response.errorCode === 'camera_unavailable') {
-            Alert.alert('Erro', 'Câmera indisponível');
-        } else if (response.errorCode === 'permission') {
-            Alert.alert('Erro', 'Permissão da câmera não concedida');
-        } else if (response.errorCode === 'others') {
-            Alert.alert('Erro', 'Erro desconhecido: ' + response.errorMessage);
-        }
-      if (response.didCancel) {
-        console.log('Usuário cancelou a câmera');
-      } else if (response.errorCode) {
-        Alert.alert('Erro', response.errorMessage || 'Erro ao abrir câmera');
-      } else {
-        const photo = response.assets?.[0];
-        if (photo?.uri) {
-          setPhotoUri(photo.uri);
-        }
-      }
-    });
+  const handlePhotoCaptured = (uri: string) => {
+    setPhotoUri(uri);
+    setIsCameraVisible(false);
   };
+
+  const handleRetake = () => {
+    setPhotoUri(null);
+    setIsCameraVisible(true);
+  };
+
+  const handleConfirm = () => {
+    console.log('Foto confirmada:', photoUri);
+    // aqui você pode salvar ou enviar a foto
+  };
+
+  const handleCancelCamera = () => setIsCameraVisible(false);
+
+  if (isCameraVisible) {
+    return <CameraCapture onPhotoCaptured={handlePhotoCaptured} onClose={handleCancelCamera} />;
+  }
 
   return (
     <View style={styles.container}>
-      {/* Logo no topo */}
-      <View>
-        <LogoCopagroUsers />
-      </View>
+      <LogoCopagroUsers />
 
-      {/* Search Bar */}
-      <Surface style={styles.searchContainer}>
-        <TextInput
-          placeholder="Pesquise por alguma conversa"
-          mode="flat"
-          underlineColor="transparent"
-          style={styles.searchInput}
-          right={<TextInput.Icon icon="magnify" />}
-        />
-      </Surface>
-
-      {/* Illustration */}
+      {/* Condicional para exibir a barra de pesquisa somente se não houver foto */}
       {!photoUri && (
-        <Image
-          source={require('../../assets/images/intro.png')}
-          style={styles.illustration}
-          resizeMode="contain"
-        />
+        <Surface style={styles.searchContainer}>
+          <TextInput
+            placeholder="Pesquise por alguma conversa"
+            mode="flat"
+            underlineColor="transparent"
+            style={styles.searchInput}
+            right={<TextInput.Icon icon="magnify" />}
+          />
+        </Surface>
       )}
 
-      {/* Description */}
       {!photoUri && (
         <>
+          <Image
+            source={require('../../assets/images/intro.png')}
+            style={styles.illustration}
+            resizeMode="contain"
+          />
           <Text style={styles.description}>
             Análises e consultas fenológicas aparecerão {'\n'} aqui após sua primeira foto
           </Text>
@@ -75,46 +63,27 @@ const IntroScreen = () => {
         </>
       )}
 
-      {/* Mostra a foto tirada */}
       {photoUri && (
-        <View style={{ alignItems: 'center' }}>
-          <Image
-            source={{ uri: photoUri }}
-            style={{ width: 300, height: 400, marginTop: 20, borderRadius: 10 }}
-            resizeMode="cover"
-          />
-          <View style={{ flexDirection: 'row', marginTop: 20 }}>
-            <IconButton
-              icon="check"
-              size={36}
-              onPress={() => {
-                console.log('Foto confirmada:', photoUri);
-                // Aqui você pode enviar a imagem para o backend ou salvar localmente
-              }}
-              style={{ backgroundColor: 'green', marginRight: 20 }}
-              iconColor="#fff"
-            />
-            <IconButton
-              icon="camera-retake"
-              size={36}
-              onPress={() => setPhotoUri(null)}
-              style={{ backgroundColor: 'red' }}
-              iconColor="#fff"
-            />
+        <View style={styles.previewContainer}>
+          {/* Fundo escuro atrás da imagem */}
+          <View style={styles.overlay}>
+            <Image source={{ uri: photoUri }} style={styles.photoPreview} resizeMode="contain" />
+          </View>
+          <View style={styles.actions}>
+            <IconButton icon="check" onPress={handleConfirm} size={36} style={styles.confirm} iconColor="#fff" />
+            <IconButton icon="camera-retake" onPress={handleRetake} size={36} style={styles.retake} iconColor="#fff" />
           </View>
         </View>
       )}
 
-      {/* Botão da câmera (só mostra se nenhuma foto foi tirada) */}
       {!photoUri && (
         <IconButton
           icon="camera"
-          size={36}
+          size={50}
           mode="contained"
-          containerColor="#D9D9D9"
-          iconColor="#ffffff"
-          onPress={handleOpenCamera}
-          style={styles.cameraButton}
+          style={styles.openCameraButton}
+          onPress={() => setIsCameraVisible(true)}
+          iconColor="#fff"
         />
       )}
     </View>
@@ -127,11 +96,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#F3F3F3',
     alignItems: 'center',
     paddingTop: 60,
-  },
-  logo: {
-    width: 160,
-    height: 40,
-    marginBottom: 30,
   },
   searchContainer: {
     width: '85%',
@@ -149,6 +113,12 @@ const styles = StyleSheet.create({
     height: 450,
     marginTop: 90,
   },
+  description: {
+    textAlign: 'center',
+    fontSize: 16,
+    color: 'black',
+    marginBottom: 20,
+  },
   seta: {
     width: 30,
     height: 30,
@@ -156,26 +126,37 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     left: 145,
   },
-  description: {
-    textAlign: 'center',
-    fontSize: 16,
-    color: 'black',
+  openCameraButton: {
+    backgroundColor: '#AFAFAF',
+    left: 145,
+  },
+  previewContainer: {
+    flex: 1,
+    alignItems: 'center',
+    marginTop: 20,
+    justifyContent: 'center',
+  },
+  overlay: {
+    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Fundo escuro para dar destaque à imagem
+    padding: 10,
+    borderRadius: 10,
     marginBottom: 20,
   },
-  cameraButton: {
-    width: 85,
-    height: 85,
-    borderRadius: 42.5,
-    position: 'absolute',
-    bottom: 40,
-    right: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#AFAFAF',
+  photoPreview: {
+    width: 350, // Tamanho maior para melhor visualização
+    height: 500, // Tamanho maior
+    borderRadius: 10,
   },
-  cameraIcon: {
-    width: 39,
-    height: 39,
+  actions: {
+    flexDirection: 'row',
+    marginTop: 20,
+  },
+  confirm: {
+    backgroundColor: 'green',
+    marginRight: 20,
+  },
+  retake: {
+    backgroundColor: 'red',
   },
 });
 
