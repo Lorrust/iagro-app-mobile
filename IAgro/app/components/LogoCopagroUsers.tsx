@@ -30,7 +30,7 @@ type LogoUsersProps = {
   const styles = StyleSheet.create({
     logo: {
       alignSelf: 'center',    
-      marginTop: -155,      
+      marginTop: -90,
       position: 'absolute', 
     },
   });

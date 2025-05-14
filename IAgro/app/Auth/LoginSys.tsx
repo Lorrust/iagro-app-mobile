@@ -104,10 +104,14 @@ export default function SettingsScreen() {
         // Remover o alert aqui se o sucesso for apenas navegação e feedback visual
         // alert('Login realizado com sucesso!');
 
-        // Salva o usuário e token, ajustando para a estrutura real da sua API
+        // Salva o usuário, token e AGORA O UID, ajustando para a estrutura real da sua API
         if (response.data) {
              if (response.data.user) {
-                await AsyncStorage.setItem('user', JSON.stringify(response.data.user));
+                if (response.data.user.uid) {
+                    await AsyncStorage.setItem('user-uid', response.data.user.uid.toString());
+                } else if (response.data.user.id) {
+                     await AsyncStorage.setItem('user-uid', response.data.user.id.toString());
+                }
              }
              if (response.data.token) { // Assumindo que o token vem no campo 'token'
                 await AsyncStorage.setItem('token', response.data.token);
@@ -379,7 +383,7 @@ export default function SettingsScreen() {
             <Text style={styles.title}>Cadastro</Text>
             <Text style={styles.subtitle}>Conte-nos um pouco sobre você...</Text>
 
-             {/* Usando TextInputCopagro para Razão Social */}
+              {/* Usando TextInputCopagro para Razão Social */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Razão social:</Text>
               <TextInputCopagro
@@ -391,7 +395,7 @@ export default function SettingsScreen() {
             </View>
 
             {/* Usando TextInputCopagro para Nome completo */}
-             <View style={styles.inputGroup}>
+              <View style={styles.inputGroup}>
               <Text style={styles.label}>Nome completo:</Text>
               <TextInputCopagro
                 placeholder="Nome completo"
