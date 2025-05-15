@@ -9,6 +9,7 @@ import {
   Animated,
   Dimensions,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { router } from 'expo-router';
 import LogoCopagro from '../components/LogoCopagro';
@@ -31,7 +32,7 @@ export default function SettingsScreen() {
 
   // Estados para a tela de Cadastro
   const [registerVisible, setRegisterVisible] = useState(false);
-  const [corporateName, setcorporateName] = useState('');
+  const [corporateName, setCorporateName] = useState('');
   const [fullName, setFullName] = useState('');
   const [cpf, setCpf] = useState('');
   const [registerEmail, setRegisterEmail] = useState('');
@@ -39,9 +40,50 @@ export default function SettingsScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loadingRegister, setLoadingRegister] = useState(false);
   const [registerError, setRegisterError] = useState('');
+  const [cnpj, setCnpj] = useState('');
 
   // Variável de animação
   const translateY = useRef(new Animated.Value(0)).current;
+
+  const showErrorFromResponse = (
+    response: any,
+    setError: (msg: string) => void,
+    title: string
+  ) => {
+    const message = response?.data?.message || 'Erro inesperado.';
+    setError(message);
+    Alert.alert(title, message);
+  };
+
+  // Handler para corporateName field para alternar os campos CPF/CNPJ
+  const onCorporateNameChange = (text: string) => {
+    setCorporateName(text);
+    if (text === '') {
+      // Se Razão Social for limpa, limpa também qualquer valor de CNPJ e volta para o campo CPF
+      setCnpj('');
+    }
+  };
+
+  // Handler para o campo CNPJ com formatação automática
+  const onCnpjChange = (text: string) => {
+    // Permite apenas dígitos e limita a 14 dígitos
+    const numeric = text.replace(/\D/g, '').slice(0, 14);
+    // Formata a string numérica como CNPJ: 00.000.000/0000-00
+    let formatted = '';
+    if (numeric.length > 0) {
+      const part1 = numeric.slice(0, 2);
+      const part2 = numeric.slice(2, 5);
+      const part3 = numeric.slice(5, 8);
+      const part4 = numeric.slice(8, 12);
+      const part5 = numeric.slice(12, 14);
+      if (part1) formatted += part1;
+      if (part2) formatted += '.' + part2;
+      if (part3) formatted += '.' + part3;
+      if (part4) formatted += '/' + part4;
+      if (part5) formatted += '-' + part5;
+    }
+    setCnpj(formatted);
+  };
 
   // Função para formatar CPF (definida na tela, não no componente Input)
   const formatCpf = (text: string): string => {
@@ -78,18 +120,25 @@ export default function SettingsScreen() {
 
       // --- VALIDAÇÃO DE EMAIL E SENHA NO LADO DO CLIENTE (Adicionado/Ajustado) ---
       if (!email || !senha) {
-          setLoginError('Por favor, preencha email e senha.');
-          setLoadingLogin(false);
-          setLoginPressed(false); // Resetar o estado do clique
-          return; // Interrompe a execução se campos vazios
+        setLoginError('Por favor, preencha email e senha.');
+        setLoadingLogin(false);
+        setLoginPressed(false); // Resetar o estado do clique
+        return; // Interrompe a execução se campos vazios
       }
 
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(email)) {
-          setLoginError('Por favor, insira um email válido.');
-          setLoadingLogin(false);
-          setLoginPressed(false); // Resetar o estado do clique
-          return; // Interrompe a execução se email inválido
+        setLoginError('Por favor, insira um email válido.');
+        setLoadingLogin(false);
+        setLoginPressed(false); // Resetar o estado do clique
+        return; // Interrompe a execução se email inválido
+      }
+
+      if (senha.length <= 8) {
+        setLoginError('A senha deve ter pelo menos 8 caracteres.');
+        setLoadingLogin(false);
+        setLoginPressed(false); // Resetar o estado do clique
+        return; // Interrompe a execução se senha inválida
       }
       // --- Fim da Validação ---
 
@@ -106,22 +155,22 @@ export default function SettingsScreen() {
 
         // Salva o usuário, token e AGORA O UID, ajustando para a estrutura real da sua API
         if (response.data) {
-             if (response.data.user) {
-                if (response.data.user.uid) {
-                    await AsyncStorage.setItem('user-uid', response.data.user.uid.toString());
-                } else if (response.data.user.id) {
-                     await AsyncStorage.setItem('user-uid', response.data.user.id.toString());
-                }
-             }
-             if (response.data.token) { // Assumindo que o token vem no campo 'token'
-                await AsyncStorage.setItem('token', response.data.token);
-             }
-             // Exemplo: salvando companyId se estiver na resposta
-             if (response.data.companyId) {
-                 await AsyncStorage.setItem('id-company', response.data.companyId.toString());
-             } else if (response.data.user?.companyId) { // Se estiver dentro de user
-                 await AsyncStorage.setItem('id-company', response.data.user.companyId.toString());
-             }
+          if (response.data.user) {
+            if (response.data.user.uid) {
+              await AsyncStorage.setItem('user-uid', response.data.user.uid.toString());
+            } else if (response.data.user.id) {
+              await AsyncStorage.setItem('user-uid', response.data.user.id.toString());
+            }
+          }
+          if (response.data.token) { // Assumindo que o token vem no campo 'token'
+            await AsyncStorage.setItem('token', response.data.token);
+          }
+          // Exemplo: salvando companyId se estiver na resposta
+          if (response.data.companyId) {
+            await AsyncStorage.setItem('id-company', response.data.companyId.toString());
+          } else if (response.data.user?.companyId) { // Se estiver dentro de user
+            await AsyncStorage.setItem('id-company', response.data.user.companyId.toString());
+          }
         }
 
 
@@ -129,9 +178,10 @@ export default function SettingsScreen() {
         router.push('/Screens/Home');
 
       } catch (error) {
-        console.error('Erro no login:', error);
+        console.log('Erro no login:', error);
+
         if (axios.isAxiosError(error)) {
-          console.error('Axios Error Details:', {
+          console.log('Axios Error Details:', {
             data: error.response?.data,
             status: error.response?.status,
             headers: error.response?.headers,
@@ -139,30 +189,26 @@ export default function SettingsScreen() {
           });
 
           if (error.response) {
-            // O backend retornou um status code fora da faixa 2xx
-            // Usa a mensagem do backend se disponível, senão uma genérica
-            const errorMessage = error.response.data?.message || 'Erro ao realizar login. Verifique suas credenciais.';
-            setLoginError(`Erro: ${errorMessage}`);
-            // Remover o alert aqui se o aviso de erro na tela for suficiente
-            // alert(`Erro ao realizar login: ${errorMessage}`);
+            const status =  error.response.status;
+
+            if (axios.isAxiosError(error) && error.response) {
+              showErrorFromResponse(error.response, setLoginError, 'Erro no Login');
+            }
           } else if (error.request) {
-            // A requisição foi feita mas nenhuma resposta foi recebida (ex: rede offline)
-            setLoginError('Erro de rede. Verifique sua conexão.');
-            // Remover o alert aqui
-            // alert('Erro de rede. Verifique sua conexão.');
+            const message = 'Erro de rede. Verifique sua conexão.';
+            setRegisterError(message);
+            Alert.alert('Erro de Rede', message);
           } else {
-            // Algo aconteceu na configuração da requisição que disparou um erro
-            setLoginError(`Ocorreu um erro: ${error.message}`);
-            // Remover o alert aqui
-            // alert(`Ocorreu um erro: ${error.message}`);
+            const message = `Ocorreu um erro: ${error.message}`;
+            setRegisterError(message);
+            Alert.alert('Erro', message);
           }
         } else {
-          console.error('Unknown Error:', error);
-          setLoginError('Ocorreu um erro inesperado.');
-          // Remover o alert aqui
-          // alert('Ocorreu um erro inesperado.');
+          const message = 'Ocorreu um erro inesperado.';
+          console.log('Unknown Error:', error);
+          setRegisterError(message);
+          Alert.alert('Erro', message);
         }
-
       } finally {
         setLoadingLogin(false);
         setLoginPressed(false); // Garante que o estado é resetado mesmo em caso de erro
@@ -225,7 +271,7 @@ export default function SettingsScreen() {
       console.log('Usuário cadastrado com sucesso!', response.data);
       alert('Cadastro realizado com sucesso! Agora você pode fazer login.');
 
-      setcorporateName('');
+      setCorporateName('');
       setFullName('');
       setCpf('');
       setRegisterEmail('');
@@ -236,25 +282,24 @@ export default function SettingsScreen() {
       animateDown();
 
     } catch (error) {
-      console.error('Erro no cadastro:', error);
+      console.log('Erro no cadastro:', error);
       if (axios.isAxiosError(error)) {
-        console.error('Axios Error Details:', {
+        console.log('Axios Error Details:', {
           data: error.response?.data,
           status: error.response?.status,
           headers: error.response?.headers,
           message: error.message,
         });
 
-        if (error.response) {
-          const errorMessage = error.response.data?.message || 'Erro ao realizar cadastro.';
-          setRegisterError(`Erro: ${errorMessage}`);
+        if (axios.isAxiosError(error) && error.response) {
+          showErrorFromResponse(error.response, setRegisterError, 'Erro no Cadastro');
         } else if (error.request) {
           setRegisterError('Erro de rede. Verifique sua conexão.');
         } else {
           setRegisterError(`Ocorreu um erro: ${error.message}`);
         }
       } else {
-        console.error('Unknown Error:', error);
+        console.log('Unknown Error:', error);
         setRegisterError('Ocorreu um erro inesperado.');
       }
     } finally {
@@ -266,7 +311,7 @@ export default function SettingsScreen() {
   // Animação para subir (mostrar cadastro)
   const animateUp = () => {
     setRegisterError(''); // Limpa erros de cadastro
-    setcorporateName('');
+    setCorporateName('');
     setFullName('');
     setCpf('');
     setRegisterEmail('');
@@ -289,7 +334,7 @@ export default function SettingsScreen() {
   // Animação para descer (voltar para login)
   const animateDown = () => {
     setRegisterError(''); // Limpa erros de cadastro
-    setcorporateName('');
+    setCorporateName('');
     setFullName('');
     setCpf('');
     setRegisterEmail('');
@@ -383,38 +428,60 @@ export default function SettingsScreen() {
             <Text style={styles.title}>Cadastro</Text>
             <Text style={styles.subtitle}>Conte-nos um pouco sobre você...</Text>
 
-              {/* Usando TextInputCopagro para Razão Social */}
+            {/* Usando TextInputCopagro para Razão Social */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Razão social:</Text>
               <TextInputCopagro
+                label="Razão Social"
                 placeholder="Razão social"
                 value={corporateName}
-                onChangeText={setcorporateName}
+                onChangeText={onCorporateNameChange}
                 editable={!loadingRegister}
               />
             </View>
 
-            {/* Usando TextInputCopagro para Nome completo */}
+            {corporateName.length > 0 ? (
+              // Se Razão Social estiver preenchida, mostra o campo CNPJ e a nota
+              <>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>CNPJ:</Text>
+                  <TextInputCopagro
+                    label="CNPJ"
+                    placeholder="00.000.000/0000-00"
+                    value={cnpj}
+                    onChangeText={onCnpjChange}
+                    maxLength={18} // 14 dígitos + 4 caracteres de formatação = 18
+                    keyboardType="number-pad"
+                    editable={!loadingRegister}
+                  />
+                </View>
+                <Text style={styles.noteText}>
+                  Ao preencher a Razão Social, o documento esperado passa a ser CNPJ (14 dígitos).
+                </Text>
+              </>
+            ) : (
+              // Se Razão Social estiver vazia, mostra o campo CPF
               <View style={styles.inputGroup}>
+                <Text style={styles.label}>CPF:</Text>
+                <TextInputCopagro
+                  label="CPF"
+                  placeholder="000.000.000-00"
+                  value={cpf}
+                  onChangeText={handleCpfChange} // CPF usa o handler com formatação
+                  maxLength={14}
+                  keyboardType="number-pad"
+                  editable={!loadingRegister}
+                />
+              </View>
+            )}
+
+            {/* Usando TextInputCopagro para Nome completo */}
+            <View style={styles.inputGroup}>
               <Text style={styles.label}>Nome completo:</Text>
               <TextInputCopagro
                 placeholder="Nome completo"
                 value={fullName}
                 onChangeText={setFullName}
-                editable={!loadingRegister}
-              />
-            </View>
-
-
-            {/* Usando TextInputCopagro para o CPF com formatação automática */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>CPF:</Text>
-              <TextInputCopagro
-                placeholder="000.000.000-00"
-                value={cpf}
-                onChangeText={handleCpfChange}
-                keyboardType="number-pad"
-                maxLength={14}
                 editable={!loadingRegister}
               />
             </View>
@@ -562,5 +629,14 @@ const styles = StyleSheet.create({
     bottom: 0,
     backgroundColor: '#fff',
     height: '100%',
+  },
+  noteText: {
+    fontSize: 12,
+    color: '#777',
+    marginTop: 5,
+    marginBottom: 10,
+    textAlign: 'left',
+    width: '100%',
+    maxWidth: 350,
   },
 });
