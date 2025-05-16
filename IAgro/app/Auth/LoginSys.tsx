@@ -223,20 +223,32 @@ export default function SettingsScreen() {
 
 
   // Função para lidar com o Cadastro
+  // Função para lidar com o Cadastro
   const handleRegister = async () => {
     setLoadingRegister(true);
     setRegisterError('');
 
     const cleanedCpfForApi = cpf.replace(/\D/g, '');
+    const cleanedCnpjForApi = cnpj.replace(/\D/g, '');
 
-    if (!corporateName || !fullName || !cleanedCpfForApi || !registerEmail || !registerPassword || !confirmPassword) {
-      setRegisterError('Por favor, preencha todos os campos.');
+    const isCpfFilled = cleanedCpfForApi.length === 11;
+    const isCorporateNameFilled = corporateName.length > 0;
+    const isCnpjFilled = cleanedCnpjForApi.length === 14;
+
+    if (!fullName || !registerEmail || !registerPassword || !confirmPassword) {
+      setRegisterError('Por favor, preencha nome completo, email e senhas.');
       setLoadingRegister(false);
       return;
     }
 
-    if (cleanedCpfForApi.length !== 11) {
-      setRegisterError('CPF inválido. Use 11 números.');
+    if (!isCpfFilled && !isCorporateNameFilled) {
+      setRegisterError('Por favor, preencha o CPF (se pessoa física) ou a Razão Social (se pessoa jurídica).');
+      setLoadingRegister(false);
+      return;
+    }
+
+    if (isCorporateNameFilled && !isCnpjFilled) {
+      setRegisterError('Por favor, preencha o CNPJ.');
       setLoadingRegister(false);
       return;
     }
@@ -254,14 +266,21 @@ export default function SettingsScreen() {
       return;
     }
 
-    const registerData = {
-      corporateName: corporateName,
+    const registerData: any = { // Usamos 'any' aqui para flexibilidade
       fullName: fullName,
       email: registerEmail,
-      cpf: cleanedCpfForApi,
       password: registerPassword,
       confirmPassword: confirmPassword,
     };
+
+    if (isCorporateNameFilled && isCnpjFilled) {
+      registerData.corporateName = corporateName;
+      registerData.cnpj = cleanedCnpjForApi;
+      // Não enviamos CPF se a Razão Social/CNPJ foi preenchida
+    } else if (isCpfFilled) {
+      registerData.cpf = cleanedCpfForApi;
+      // Não enviamos CNPJ se o CPF foi preenchido
+    }
 
     console.log('Dados de cadastro a serem enviados:', registerData);
 
@@ -274,6 +293,7 @@ export default function SettingsScreen() {
       setCorporateName('');
       setFullName('');
       setCpf('');
+      setCnpj('');
       setRegisterEmail('');
       setRegisterPassword('');
       setConfirmPassword('');
@@ -430,9 +450,9 @@ export default function SettingsScreen() {
 
             {/* Usando TextInputCopagro para Razão Social */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Razão social:</Text>
+              <Text style={styles.label}>Razão social - Necessário para CNPJ</Text>
               <TextInputCopagro
-                label="Razão Social"
+                label="Razão Social *Opcional "
                 placeholder="Razão social"
                 value={corporateName}
                 onChangeText={onCorporateNameChange}
