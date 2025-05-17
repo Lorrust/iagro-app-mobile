@@ -31,7 +31,7 @@ export default function ForgotPassword() {
 
     try {
       // Endpoint para gerar o link de reset de senha
-      const endpoint = '/auth/generate-password-reset-link';
+      const endpoint = '/auth/send-password-reset-email';
       const response = await axiosService.post(endpoint, { email });
 
       console.log('Link de recuperação gerado com sucesso!', response.data);

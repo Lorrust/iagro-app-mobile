@@ -35,7 +35,7 @@ const IntroScreen = () => {
     setLoadingChats(true);
     setErrorChats(null);
     try {
-      const userUid = await AsyncStorage.getItem('user-uid'); // Pega o UID do AsyncStorage
+      const userUid = await AsyncStorage.getItem('uid'); // Pega o UID do AsyncStorage
 
       if (!userUid) {
         console.warn("User UID não encontrado. Usuário não logado?");

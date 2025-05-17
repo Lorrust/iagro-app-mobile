@@ -152,27 +152,22 @@ export default function SettingsScreen() {
         console.log('Login realizado com sucesso!', response.data);
         // Remover o alert aqui se o sucesso for apenas navegação e feedback visual
         // alert('Login realizado com sucesso!');
-
-        // Salva o usuário, token e AGORA O UID, ajustando para a estrutura real da sua API
-        if (response.data) {
-          if (response.data.user) {
-            if (response.data.user.uid) {
-              await AsyncStorage.setItem('user-uid', response.data.user.uid.toString());
-            } else if (response.data.user.id) {
-              await AsyncStorage.setItem('user-uid', response.data.user.id.toString());
-            }
-          }
-          if (response.data.token) { // Assumindo que o token vem no campo 'token'
-            await AsyncStorage.setItem('token', response.data.token);
-          }
-          // Exemplo: salvando companyId se estiver na resposta
-          if (response.data.companyId) {
-            await AsyncStorage.setItem('id-company', response.data.companyId.toString());
-          } else if (response.data.user?.companyId) { // Se estiver dentro de user
-            await AsyncStorage.setItem('id-company', response.data.user.companyId.toString());
-          }
+        // Salva o UID em escopo global
+        let savedUid = null;
+        if (response.data.user?.uid) {
+          savedUid = response.data.user.uid.toString();
+        } else if (response.data.user?.id) {
+          savedUid = response.data.user.id.toString();
+        } else if (response.data.uid) {
+          savedUid = response.data.uid.toString();
         }
 
+        if (savedUid) {
+          await AsyncStorage.setItem('uid', savedUid);
+          console.log('User UID salvo com sucesso:', savedUid);
+        } else {
+          console.warn('User UID não encontrado. Usuário não logado?');
+        }
 
         // Navega para Home
         router.push('/Screens/Home');
