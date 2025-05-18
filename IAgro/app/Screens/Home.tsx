@@ -189,12 +189,15 @@ const IntroScreen = () => {
                     style={styles.cardWrapper}
                 >
                     <Card style={styles.chatCard}>
-                        <Card.Content>
-                            <Title style={styles.cardTitle}>{chat.problem || 'Problema não especificado'}</Title>
-                            {/* Opcional: Adicionar mais detalhes, como data, se desejar */}
-                            {/* <Paragraph>{new Date(chat.timestamp._seconds * 1000).toLocaleDateString()}</Paragraph> */}
-                        </Card.Content>
+                      <Card.Content>
+                        <Title style={styles.cardTitle}>{chat.problem || 'Problema não especificado'}</Title>
+                        <Paragraph style={styles.cardDescription} numberOfLines={4} ellipsizeMode="tail">
+                          {chat.description}
+                        </Paragraph>
+                        <Text style={styles.cardId}>ID: {chat.id}</Text>
+                      </Card.Content>
                     </Card>
+
                 </TouchableOpacity>
             ))}
         </ScrollView>
@@ -355,6 +358,20 @@ const styles = StyleSheet.create({
        fontWeight: 'bold',
        color: '#333', // Cor escura para o texto do problema
    },
+   cardDescription: {
+  fontSize: 14,
+  color: '#555',
+  marginTop: 8,
+  lineHeight: 20,
+},
+
+cardId: {
+  fontSize: 12,
+  color: '#999',
+  marginTop: 12,
+  fontStyle: 'italic',
+},
+
 });
 
 export default IntroScreen;
