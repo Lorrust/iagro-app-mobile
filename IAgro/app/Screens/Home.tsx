@@ -7,6 +7,7 @@ import UserGalleryScreen from '../components/UserGalleryScreen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axiosService from '../../services/axiosService';
 import { router } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 
 interface ChatData {
   id: string;
@@ -31,6 +32,24 @@ const IntroScreen = () => {
   const [showBottomNavigation, setShowBottomNavigation] = useState(false);
   const [navigationIndex, setNavigationIndex] = useState(0);
   const [isGalleryVisible, setIsGalleryVisible] = useState(false);
+
+  const handleOpenGalleryDirect = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      alert('Você precisa permitir o acesso à galeria para escolher uma imagem.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 1,
+    });
+
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      handlePhotoCaptured(result.assets[0].uri);
+    }
+  };
 
   const fetchUserChats = async () => {
     setLoadingChats(true);
@@ -113,8 +132,7 @@ const IntroScreen = () => {
         setIsGalleryVisible(false);
         break;
       case 2:
-        setIsGalleryVisible(true);
-        setIsCameraVisible(false);
+        handleOpenGalleryDirect();
         break;
       default:
         break;
