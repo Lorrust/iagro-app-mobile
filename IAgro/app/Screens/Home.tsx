@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Image, Text, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
-import { TextInput, IconButton, Surface, Card, Title, Paragraph } from 'react-native-paper';
+import { TextInput, IconButton, Card, Title, Paragraph, BottomNavigation } from 'react-native-paper';
 import LogoCopagroUsers from '../components/LogoCopagroUsers';
 import CameraCapture from '../components/CreateCapture';
-import AsyncStorage from '@react-native-async-storage/async-storage'; // Importar AsyncStorage
-import axiosService from '../../services/axiosService'; // Já importado, ok
-import { router } from 'expo-router'; // Importar router para navegação
+import UserGalleryScreen from '../components/UserGalleryScreen';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import axiosService from '../../services/axiosService';
+import { router } from 'expo-router';
 
-// Definir um tipo para a estrutura dos dados de conversa
 interface ChatData {
   id: string;
   userUid: string;
@@ -21,28 +21,28 @@ interface ChatData {
   recommendation?: string;
 }
 
-
 const IntroScreen = () => {
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [isCameraVisible, setIsCameraVisible] = useState(false);
-
-  // Novos estados para carregar e exibir as conversas
   const [chats, setChats] = useState<ChatData[] | null>(null);
-  const [loadingChats, setLoadingChats] = useState(true); // Começa como true para carregar os chats ao iniciar
+  const [loadingChats, setLoadingChats] = useState(true);
   const [errorChats, setErrorChats] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showBottomNavigation, setShowBottomNavigation] = useState(false);
+  const [navigationIndex, setNavigationIndex] = useState(0);
+  const [isGalleryVisible, setIsGalleryVisible] = useState(false);
 
-  // Função para buscar os chats do usuário logado
   const fetchUserChats = async () => {
     setLoadingChats(true);
     setErrorChats(null);
     try {
-      const userUid = await AsyncStorage.getItem('uid'); // Pega o UID do AsyncStorage
+      const userUid = await AsyncStorage.getItem('uid');
 
       if (!userUid) {
         console.warn("User UID não encontrado. Usuário não logado?");
-        setChats([]); // Define como array vazio se não houver UID
+        setChats([]);
         setLoadingChats(false);
+        setShowBottomNavigation(false);
         return;
       }
 
@@ -50,22 +50,21 @@ const IntroScreen = () => {
       const response = await axiosService.get(`/chats/users/${userUid}`);
       console.log('Resposta da API de chats:', response.data);
 
-      // Aqui já é o array direto
       if (Array.isArray(response.data)) {
-        const fullChats = response.data.filter(
-          (chat: any) => chat.description && chat.problem
-        );
-        console.log(`Chats filtrados: ${fullChats.length}`);
-        setChats(fullChats);
+        setChats(response.data);
+        setShowBottomNavigation(response.data.length > 0);
+        console.log('chats.length:', response.data.length);
       } else {
         console.warn('Resposta inesperada da API');
         setChats([]);
+        setShowBottomNavigation(false);
       }
       setLoadingChats(false);
     } catch (error) {
       console.error('Erro ao buscar chats:', error);
       setErrorChats('Erro ao carregar as conversas. Tente novamente mais tarde.');
       setLoadingChats(false);
+      setShowBottomNavigation(false);
     }
   };
 
@@ -73,20 +72,13 @@ const IntroScreen = () => {
     chat.problem?.toLowerCase().includes(searchQuery.toLowerCase())
   ) || [];
 
-  // UseEffect para buscar os chats quando a tela montar
   useEffect(() => {
     fetchUserChats();
-  }, []); // Array de dependência vazio para rodar apenas uma vez ao montar
+  }, []);
 
   const handlePhotoCaptured = (uri: string) => {
     setPhotoUri(uri);
     setIsCameraVisible(false);
-    // Aqui, após capturar uma foto, você pode querer recarregar os chats
-    // ou navegar para a tela de análise/chat com a nova foto.
-    // Por enquanto, apenas limpa o estado de chats para forçar a re-exibição
-    // da tela de "sem chats" ou um novo loading se for o caso.
-    // setChats(null); // Opcional: resetar o estado para exibir loading novamente
-    // fetchUserChats(); // Opcional: recarregar chats após tirar uma foto (se a foto gerar um novo chat automaticamente)
   };
 
   const handleRetake = () => {
@@ -96,32 +88,52 @@ const IntroScreen = () => {
 
   const handleConfirm = () => {
     console.log('Foto confirmada:', photoUri);
-    // TODO: Aqui você enviaria a foto para a API para análise
-    // Após o envio e processamento (em outra tela, talvez), você voltaria
-    // para esta tela e chamaria fetchUserChats() novamente para ver a nova conversa.
     alert('Foto confirmada! Implementação de envio pendente.');
-    setPhotoUri(null); // Limpa a foto de preview
-    // fetchUserChats(); // Recarrega a lista após suposta conclusão da análise
+    setPhotoUri(null);
   };
 
   const handleCancelCamera = () => setIsCameraVisible(false);
+  const handleCancelGallery = () => setIsGalleryVisible(false);
 
   const handleCardPress = (chatId: string) => {
     console.log('Abrir chat com ID:', chatId);
-    // TODO: Navegar para a tela de chat detalhado, passando o chatId
-    // router.push(/Screens/ChatDetail/${chatId}); // Exemplo de rota
-    alert(`Abrir conversa com ID: ${chatId}`);  };
+    alert(`Abrir conversa com ID: ${chatId}`);
+    // router.push(`/Screens/ChatDetail/${chatId}`);
+  };
+
+  const handleNavigationChange = (index: number) => {
+    setNavigationIndex(index);
+    switch (index) {
+      case 0:
+        setIsCameraVisible(false);
+        setIsGalleryVisible(false);
+        break;
+      case 1:
+        setIsCameraVisible(true);
+        setIsGalleryVisible(false);
+        break;
+      case 2:
+        setIsGalleryVisible(true);
+        setIsCameraVisible(false);
+        break;
+      default:
+        break;
+    }
+  };
+
   if (isCameraVisible) {
     return <CameraCapture onPhotoCaptured={handlePhotoCaptured} onClose={handleCancelCamera} />;
   }
 
-  // Se houver uma foto para pré-visualizar, mostre a pré-visualização
+  if (isGalleryVisible) {
+    return <UserGalleryScreen onClose={handleCancelGallery} />;
+  }
+
   if (photoUri) {
     return (
       <View style={styles.container}>
-        <LogoCopagroUsers/>
+        <LogoCopagroUsers />
         <View style={styles.previewContainer}>
-          {/* Fundo escuro atrás da imagem */}
           <View style={styles.overlay}>
             <Image source={{ uri: photoUri }} style={styles.photoPreview} resizeMode="contain" />
           </View>
@@ -134,109 +146,110 @@ const IntroScreen = () => {
     );
   }
 
-  // Se não houver foto para pré-visualizar, mostre o conteúdo principal (chats ou tela inicial)
   return (
     <View style={styles.container}>
-      <LogoCopagroUsers/>
+      <LogoCopagroUsers />
 
-      <TextInput
-        placeholder="Pesquisar por problema..."
-        value={searchQuery}
-        onChangeText={setSearchQuery}
-        style={styles.searchInput}
-      />
+      <View style={{ flex: 1, width: '100%' }}>
+        <TextInput
+          placeholder="Pesquisar por problema..."
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          style={styles.searchInput}
+        />
 
-
-      {loadingChats && (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#028C48" />
-          <Text style={styles.loadingText}>Carregando conversas...</Text>
-        </View>
-      )}
-
-      {errorChats && (
-         <View style={styles.centeredContent}>
-            <Text style={styles.errorText}>{errorChats}</Text>
-            <TouchableOpacity onPress={fetchUserChats} style={{ marginTop: 20 }}>
-                <Text style={styles.retryText}>Tentar carregar novamente</Text>
-            </TouchableOpacity>
-         </View>
-      )}
-
-      {!loadingChats && !errorChats && (chats === null || chats.length === 0) && (
-        // Mostra a tela inicial (sem chats) - Sem barra de pesquisa agora
-        <>
-          <View style={styles.centeredContent}>
-              <Image
-                source={require('../../assets/images/intro.png')}
-                style={styles.illustration}
-                resizeMode="contain"
-              />
-              <Text style={styles.description}>
-                Análises e consultas fenológicas aparecerão {'\n'} aqui após sua primeira foto
-              </Text>
-              <Image
-                source={require('../../assets/images/seta.png')}
-                style={styles.seta}
-              />
+        {loadingChats && (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#028C48" />
+            <Text style={styles.loadingText}>Carregando conversas...</Text>
           </View>
-           {/* Botão da câmera sempre no final para tela inicial */}
-           <IconButton
-              icon="camera"
-              size={50}
-              mode="contained"
-              style={styles.openCameraButton}
-              onPress={() => setIsCameraVisible(true)}
-              iconColor="#fff"
-            />
-        </>
-      )}
-
-      {!loadingChats && !errorChats && filteredChats.length > 0 && (
-        <ScrollView contentContainerStyle={styles.chatsListContainer}>
-          {filteredChats.map((chat) => (
-            <TouchableOpacity
-              key={chat.id}
-              onPress={() => handleCardPress(chat.id)}
-              style={styles.cardWrapper}
-            >
-              <Card style={styles.chatCard}>
-                <Card.Content>
-                  <Title style={styles.cardTitle}>
-                    {chat.problem || 'Problema não especificado'}
-                  </Title>
-                  <Paragraph
-                    style={styles.cardDescription}
-                    numberOfLines={3}
-                    ellipsizeMode="tail"
-                  >
-                    {chat.description}
-                  </Paragraph>
-                </Card.Content>
-              </Card>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      )}
-
-
-       {/* Botão da câmera - aparece apenas se não estiver carregando chats E se chats EXISTEM e NÃO ESTÃO VAZIOS (para não duplicar com a tela inicial)
-           Ou pode deixá-lo fixo na parte inferior, independentemente da lista de chats.
-           Vamos deixá-lo fixo na parte inferior para ambas as telas (lista de chats e sem chats)
-           Mas só se não estiver carregando e não estiver mostrando preview.
-        */}
-        {!loadingChats && !photoUri && (chats === null || chats.length > 0) && (
-           <IconButton
-              icon="camera"
-              size={50}
-              mode="contained"
-              style={styles.openCameraButtonList} // Estilo diferente para posicionar na lista
-              onPress={() => setIsCameraVisible(true)}
-              iconColor="#fff"
-            />
         )}
 
+        {errorChats && (
+          <View style={styles.centeredContent}>
+            <Text style={styles.errorText}>{errorChats}</Text>
+            <TouchableOpacity onPress={fetchUserChats} style={{ marginTop: 20 }}>
+              <Text style={styles.retryText}>Tentar carregar novamente</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
+        {!loadingChats && !errorChats && (chats === null || chats.length === 0) && (
+          <View style={styles.centeredContent}>
+            <Image
+              source={require('../../assets/images/intro.png')}
+              style={styles.illustration}
+              resizeMode="contain"
+            />
+            <Text style={styles.description}>
+              Análises e consultas fenológicas aparecerão {'\n'} aqui após sua primeira foto
+            </Text>
+            <Image
+              source={require('../../assets/images/seta.png')}
+              style={styles.seta}
+            />
+          </View>
+        )}
+
+        {!loadingChats && !errorChats && filteredChats.length > 0 && (
+          <ScrollView contentContainerStyle={styles.chatsListContainer}>
+            {filteredChats.map((chat) => (
+              <TouchableOpacity
+                key={chat.id}
+                onPress={() => handleCardPress(chat.id)}
+                style={styles.cardWrapper}
+              >
+                <Card style={styles.chatCard}>
+                  <Card.Content>
+                    <Title style={styles.cardTitle}>
+                      {chat.problem || 'Problema não especificado'}
+                    </Title>
+                    <Paragraph
+                      style={styles.cardDescription}
+                      numberOfLines={3}
+                      ellipsizeMode="tail"
+                    >
+                      {chat.description}
+                    </Paragraph>
+                  </Card.Content>
+                </Card>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
+      </View>
+
+      {/* Rodapé fixo e funcional */}
+      {showBottomNavigation && (
+      <View style={styles.customBottomBar}>
+        <IconButton
+          icon="home"
+          iconColor={navigationIndex === 0 ? '#FFFFFF' : '#FFFFFF'}
+          onPress={() => handleNavigationChange(0)}
+        />
+        <IconButton
+          icon="camera"
+          iconColor={navigationIndex === 1 ? '#FFFFFF' : '#FFFFFF'}
+          onPress={() => handleNavigationChange(1)}
+        />
+        <IconButton
+          icon="folder"
+          iconColor={navigationIndex === 2 ? '#FFFFFF' : '#FFFFFF'}
+          onPress={() => handleNavigationChange(2)}
+        />
+      </View>
+      )}
+
+      {!showBottomNavigation && !loadingChats && !photoUri && (chats === null || chats.length === 0) && (
+        <IconButton
+          icon="camera"
+          size={50}
+          mode="contained"
+          style={styles.openCameraButton}
+          onPress={() => setIsCameraVisible(true)}
+          iconColor="#fff"
+        />
+      )}
     </View>
   );
 };
@@ -247,8 +260,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#F3F3F3',
     alignItems: 'center',
     paddingTop: 60,
+    flexDirection: 'column',
   },
-   loadingContainer: {
+  loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
@@ -264,7 +278,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 20,
   },
-   retryText: {
+  retryText: {
     color: '#028C48',
     fontSize: 16,
     textDecorationLine: 'underline',
@@ -276,66 +290,62 @@ const styles = StyleSheet.create({
     borderRadius: 33,
   },
   searchInput: {
-    backgroundColor: '#F8F3F9',
-    borderRadius: 33,
-    height: 50,
+    width: '85%',
+    marginTop: 20,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    height: 48,
+    paddingHorizontal: 10,
+    alignSelf: 'center',  
+    elevation: 2,
   },
-   centeredContent: {
-      flex: 1, // Permite que este conteúdo ocupe o espaço disponível
-      justifyContent: 'center',
-      alignItems: 'center',
-      width: '100%', // Garante que o container ocupe a largura total para centralização
-   },
+  centeredContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+  },
   illustration: {
     width: '100%',
-    height: 450, // Ajustado para caber melhor com o conteúdo centralizado
-    marginTop: 0, // Ajustado
-    marginBottom: 20, // Adicionado espaço
+    height: 450,
+    marginTop: 0,
+    marginBottom: 20,
   },
   description: {
     textAlign: 'center',
     fontSize: 16,
     color: 'black',
     marginBottom: 20,
-     paddingHorizontal: 20, // Adicionado padding horizontal
+    paddingHorizontal: 20,
   },
   seta: {
     width: 30,
     height: 30,
-    marginTop: -10, // Ajustado
+    marginTop: -10,
     marginBottom: 20,
-    left: 145, // Manteve a posição lateral
+    left: 145,
   },
-   // Estilo para o botão da câmera na tela inicial (sem chats)
   openCameraButton: {
     backgroundColor: '#AFAFAF',
-    position: 'absolute', // Posição absoluta no container principal
-    bottom: 30, // 30px do fundo
-    right: 30, // 30px da direita
-    zIndex: 1, // Garante que fique acima de outros elementos
-  },
-  // Estilo para o botão da câmera na tela com lista de chats
-   openCameraButtonList: {
-    backgroundColor: '#AFAFAF',
-    position: 'absolute', // Posição absoluta no container principal
-    bottom: 30, // 30px do fundo
-    right: 30, // 30px da direita
-    zIndex: 1, // Garante que fique acima de outros elementos
+    position: 'absolute',
+    bottom: 30,
+    right: 30,
+    zIndex: 1,
   },
   previewContainer: {
     flex: 1,
     alignItems: 'center',
-    marginTop: 0, // Ajustado para não ter margin top se for o único conteúdo
+    marginTop: 0,
     justifyContent: 'center',
-    width: '100%', // Usa largura total
+    width: '100%',
   },
   overlay: {
-    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Fundo escuro para dar destaque à imagem
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     padding: 10,
     borderRadius: 10,
     marginBottom: 20,
-     flex: 1, // Permite que a pré-visualização ocupe espaço
-     justifyContent: 'center', // Centraliza a imagem no overlay
+    flex: 1,
+    justifyContent: 'center',
   },
   photoPreview: {
     width: 350,
@@ -345,10 +355,10 @@ const styles = StyleSheet.create({
   actions: {
     flexDirection: 'row',
     marginTop: 20,
-    position: 'absolute', // Posiciona sobre a pré-visualização
-    bottom: 40, // Um pouco acima da base
-    alignSelf: 'center', // Centraliza horizontalmente
-    zIndex: 1, // Garante que fiquem acima da imagem
+    position: 'absolute',
+    bottom: 40,
+    alignSelf: 'center',
+    zIndex: 1,
   },
   confirm: {
     backgroundColor: 'green',
@@ -357,45 +367,57 @@ const styles = StyleSheet.create({
   retake: {
     backgroundColor: 'red',
   },
-   chatsListContainer: {
-      paddingHorizontal: 10, // Espaço nas laterais
-      paddingBottom: 100, // Espaço inferior para não esconder o último card com o botão da câmera
-      width: '100%', // Garante que o ScrollView use a largura total
-   },
-   cardWrapper: {
-       marginBottom: 10, // Espaço entre os cards
-       borderRadius: 8, // Borda arredondada para o touchable
-       overflow: 'hidden', // Garante que o conteúdo fique dentro da borda
-   },
-   chatCard: {
-      elevation: 2, // Sombra
-   },
-   cardTitle: {
-       fontSize: 16,
-       fontWeight: 'bold',
-       color: '#333', // Cor escura para o texto do problema
-   },
-   cardDescription: {
-  fontSize: 14,
-  color: '#555',
+  chatsListContainer: {
+    paddingHorizontal: 10,
+    width: '100%',
+    flexGrow: 1,
+    paddingBottom: 65,
+  },
+  cardWrapper: {
+    marginBottom: 10,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  chatCard: {
+  elevation: 30,
+  backgroundColor: '#E0E0E0',
+  marginHorizontal: 10,
+  borderRadius: 12,
+  padding: 5,
   marginTop: 8,
-  lineHeight: 20,
-},
-
-cardId: {
-  fontSize: 12,
-  color: '#999',
-  marginTop: 12,
-  fontStyle: 'italic',
-},
-searchInput: {
-  width: '85%',
-  marginTop: 20,
-  backgroundColor: '#fff',
-  borderRadius: 8,
-  height: 48,
-  paddingHorizontal: 10,
-},
+  },
+  cardTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: 'black',
+  },
+  cardDescription: {
+    fontSize: 15,
+    color: '#555',
+    marginTop: 6,
+    lineHeight: 18,
+  },
+  cardId: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 12,
+    fontStyle: 'italic',
+  },
+  bottomNavigation: {
+    backgroundColor: '#028C48',
+  },
+  customBottomBar: {
+  position: 'absolute',
+  bottom: 0,
+  left: 0,
+  right: 0,
+  height: 60,
+  backgroundColor: '#028C48',
+  flexDirection: 'row',
+  justifyContent: 'space-around',
+  alignItems: 'center',
+  elevation: 8,
+  },
 });
 
 export default IntroScreen;
