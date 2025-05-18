@@ -15,11 +15,12 @@ interface ChatData {
     _seconds: number;
     _nanoseconds: number;
   };
-  category: string;
-  problem: string;
-  description: string;
-  recommendation: string;
+  category?: string;
+  problem?: string;
+  description?: string;
+  recommendation?: string;
 }
+
 
 const IntroScreen = () => {
   const [photoUri, setPhotoUri] = useState<string | null>(null);
@@ -29,6 +30,7 @@ const IntroScreen = () => {
   const [chats, setChats] = useState<ChatData[] | null>(null);
   const [loadingChats, setLoadingChats] = useState(true); // Começa como true para carregar os chats ao iniciar
   const [errorChats, setErrorChats] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Função para buscar os chats do usuário logado
   const fetchUserChats = async () => {
@@ -45,25 +47,31 @@ const IntroScreen = () => {
       }
 
       console.log(`Buscando conversas para o UID: ${userUid}`);
-      const response = await axiosService.get(`/chats/users/${userUid}`); // Rota com o UID
-
+      const response = await axiosService.get(`/chats/users/${userUid}`);
       console.log('Resposta da API de chats:', response.data);
 
-      if (response.data && response.data.success && response.data.data) {
-        setChats(response.data.data); // Salva os dados da conversa
+      // Aqui já é o array direto
+      if (Array.isArray(response.data)) {
+        const fullChats = response.data.filter(
+          (chat: any) => chat.description && chat.problem
+        );
+        console.log(`Chats filtrados: ${fullChats.length}`);
+        setChats(fullChats);
       } else {
-        // Se a API retornar sucesso mas data for vazio ou null
+        console.warn('Resposta inesperada da API');
         setChats([]);
       }
-
+      setLoadingChats(false);
     } catch (error) {
       console.error('Erro ao buscar chats:', error);
-      setErrorChats('Erro ao carregar conversas. Tente novamente mais tarde.');
-      setChats([]); // Garante que o estado de chats seja vazio em caso de erro
-    } finally {
+      setErrorChats('Erro ao carregar as conversas. Tente novamente mais tarde.');
       setLoadingChats(false);
     }
   };
+
+  const filteredChats = chats?.filter((chat) =>
+    chat.problem?.toLowerCase().includes(searchQuery.toLowerCase())
+  ) || [];
 
   // UseEffect para buscar os chats quando a tela montar
   useEffect(() => {
@@ -101,10 +109,8 @@ const IntroScreen = () => {
   const handleCardPress = (chatId: string) => {
     console.log('Abrir chat com ID:', chatId);
     // TODO: Navegar para a tela de chat detalhado, passando o chatId
-    // router.push(`/Screens/ChatDetail/${chatId}`); // Exemplo de rota
-    alert(`Abrir conversa com ID: ${chatId}`);
-  };
-
+    // router.push(/Screens/ChatDetail/${chatId}); // Exemplo de rota
+    alert(`Abrir conversa com ID: ${chatId}`);  };
   if (isCameraVisible) {
     return <CameraCapture onPhotoCaptured={handlePhotoCaptured} onClose={handleCancelCamera} />;
   }
@@ -132,6 +138,14 @@ const IntroScreen = () => {
   return (
     <View style={styles.container}>
       <LogoCopagroUsers/>
+
+      <TextInput
+        placeholder="Pesquisar por problema..."
+        value={searchQuery}
+        onChangeText={setSearchQuery}
+        style={styles.searchInput}
+      />
+
 
       {loadingChats && (
         <View style={styles.loadingContainer}>
@@ -178,30 +192,33 @@ const IntroScreen = () => {
         </>
       )}
 
-      {!loadingChats && !errorChats && chats && chats.length > 0 && (
-        // Mostra a lista de cards com as conversas - Sem barra de pesquisa
+      {!loadingChats && !errorChats && filteredChats.length > 0 && (
         <ScrollView contentContainerStyle={styles.chatsListContainer}>
-            {/* A barra de pesquisa NÃO aparece aqui */}
-            {chats.map((chat) => (
-                <TouchableOpacity
-                    key={chat.id}
-                    onPress={() => handleCardPress(chat.id)}
-                    style={styles.cardWrapper}
-                >
-                    <Card style={styles.chatCard}>
-                      <Card.Content>
-                        <Title style={styles.cardTitle}>{chat.problem || 'Problema não especificado'}</Title>
-                        <Paragraph style={styles.cardDescription} numberOfLines={4} ellipsizeMode="tail">
-                          {chat.description}
-                        </Paragraph>
-                        <Text style={styles.cardId}>ID: {chat.id}</Text>
-                      </Card.Content>
-                    </Card>
-
-                </TouchableOpacity>
-            ))}
+          {filteredChats.map((chat) => (
+            <TouchableOpacity
+              key={chat.id}
+              onPress={() => handleCardPress(chat.id)}
+              style={styles.cardWrapper}
+            >
+              <Card style={styles.chatCard}>
+                <Card.Content>
+                  <Title style={styles.cardTitle}>
+                    {chat.problem || 'Problema não especificado'}
+                  </Title>
+                  <Paragraph
+                    style={styles.cardDescription}
+                    numberOfLines={3}
+                    ellipsizeMode="tail"
+                  >
+                    {chat.description}
+                  </Paragraph>
+                </Card.Content>
+              </Card>
+            </TouchableOpacity>
+          ))}
         </ScrollView>
       )}
+
 
        {/* Botão da câmera - aparece apenas se não estiver carregando chats E se chats EXISTEM e NÃO ESTÃO VAZIOS (para não duplicar com a tela inicial)
            Ou pode deixá-lo fixo na parte inferior, independentemente da lista de chats.
@@ -371,7 +388,14 @@ cardId: {
   marginTop: 12,
   fontStyle: 'italic',
 },
-
+searchInput: {
+  width: '85%',
+  marginTop: 20,
+  backgroundColor: '#fff',
+  borderRadius: 8,
+  height: 48,
+  paddingHorizontal: 10,
+},
 });
 
 export default IntroScreen;
