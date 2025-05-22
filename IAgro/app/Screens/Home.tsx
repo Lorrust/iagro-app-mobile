@@ -32,6 +32,9 @@ const IntroScreen = () => {
   const [showBottomNavigation, setShowBottomNavigation] = useState(false);
   const [navigationIndex, setNavigationIndex] = useState(0);
   const [isGalleryVisible, setIsGalleryVisible] = useState(false);
+  const params = {
+    "limit": 10,
+  };
 
   const handleOpenGalleryDirect = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -66,13 +69,13 @@ const IntroScreen = () => {
       }
 
       console.log(`Buscando conversas para o UID: ${userUid}`);
-      const response = await axiosService.get(`/chats/users/${userUid}`);
-      console.log('Resposta da API de chats:', response.data);
+      const response = await axiosService.get(`http://127.0.0.1:3000/chats/users/${userUid}`, params );
+      console.log('Resposta da API de chats:', response.data.chats);
 
-      if (Array.isArray(response.data)) {
-        setChats(response.data);
-        setShowBottomNavigation(response.data.length > 0);
-        console.log('chats.length:', response.data.length);
+      if (Array.isArray(response.data.chats)) {
+        setChats(response.data.chats);
+        setShowBottomNavigation(response.data.chats.length > 0);
+        console.log('chats.length:', response.data.chats.length);
       } else {
         console.warn('Resposta inesperada da API');
         setChats([]);
