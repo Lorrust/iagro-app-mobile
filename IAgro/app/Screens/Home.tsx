@@ -11,6 +11,7 @@ import * as ImagePicker from 'expo-image-picker';
 
 interface ChatData {
   id: string;
+  title: string;
   userUid: string;
   timestamp: {
     _seconds: number;
@@ -69,7 +70,7 @@ const IntroScreen = () => {
       }
 
       console.log(`Buscando conversas para o UID: ${userUid}`);
-      const response = await axiosService.get(`http://127.0.0.1:3000/chats/users/${userUid}`, params );
+      const response = await axiosService.get(`/chats/users/${userUid}` );
       console.log('Resposta da API de chats:', response.data.chats);
 
       if (Array.isArray(response.data.chats)) {
@@ -213,7 +214,7 @@ const IntroScreen = () => {
         )}
 
         {!loadingChats && !errorChats && filteredChats.length > 0 && (
-          <ScrollView contentContainerStyle={styles.chatsListContainer}>
+          <ScrollView contentContainerStyle={styles.chatsListContainer} showsVerticalScrollIndicator={true} bounces={false}>
             {filteredChats.map((chat) => (
               <TouchableOpacity
                 key={chat.id}
@@ -223,7 +224,7 @@ const IntroScreen = () => {
                 <Card style={styles.chatCard}>
                   <Card.Content>
                     <Title style={styles.cardTitle}>
-                      {chat.problem || 'Problema não especificado'}
+                      {chat.title || 'Titulo não especificado'}
                     </Title>
                     <Paragraph
                       style={styles.cardDescription}
@@ -279,9 +280,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F3F3F3',
-    alignItems: 'center',
+    //alignItems: 'center',
     paddingTop: 60,
-    flexDirection: 'column',
+    //flexDirection: 'column',
   },
   loadingContainer: {
     flex: 1,
@@ -390,9 +391,9 @@ const styles = StyleSheet.create({
   },
   chatsListContainer: {
     paddingHorizontal: 10,
-    width: '100%',
-    flexGrow: 1,
-    paddingBottom: 65,
+    //width: '100%',
+    paddingBottom: 20,
+    paddingTop: 20,
   },
   cardWrapper: {
     marginBottom: 10,
@@ -404,8 +405,9 @@ const styles = StyleSheet.create({
   backgroundColor: '#E0E0E0',
   marginHorizontal: 10,
   borderRadius: 12,
-  padding: 5,
+  padding: 10,
   marginTop: 8,
+  marginBottom: 10,
   },
   cardTitle: {
     fontSize: 20,
@@ -427,6 +429,11 @@ const styles = StyleSheet.create({
   bottomNavigation: {
     backgroundColor: '#028C48',
   },
+  scrollArea: {
+    flex: 1,
+    width: '100%',
+    marginBottom: 70, // Espaço para o bottom navigation
+  },
   customBottomBar: {
   position: 'absolute',
   bottom: 0,
@@ -438,6 +445,7 @@ const styles = StyleSheet.create({
   justifyContent: 'space-around',
   alignItems: 'center',
   elevation: 8,
+  zIndex: 10,
   },
 });
 
