@@ -33,9 +33,8 @@ const IntroScreen = () => {
   const [showBottomNavigation, setShowBottomNavigation] = useState(false);
   const [navigationIndex, setNavigationIndex] = useState(0);
   const [isGalleryVisible, setIsGalleryVisible] = useState(false);
-  const params = {
-    "limit": 10,
-  };
+  const [hasMore, setHasMore] = useState(true);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
 
   const handleOpenGalleryDirect = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -60,9 +59,8 @@ const IntroScreen = () => {
     setErrorChats(null);
     try {
       const userUid = await AsyncStorage.getItem('uid');
-
       if (!userUid) {
-        console.warn("User UID não encontrado. Usuário não logado?");
+        console.warn("User UID não encontrado.");
         setChats([]);
         setLoadingChats(false);
         setShowBottomNavigation(false);
@@ -70,29 +68,63 @@ const IntroScreen = () => {
       }
 
       console.log(`Buscando conversas para o UID: ${userUid}`);
-      const response = await axiosService.get(`/chats/users/${userUid}` );
+      const param = {
+        limit: 3,
+          orderBy: 'timestamp',
+          direction: 'desc'
+      }
+      const response = await axiosService.get(`/chats/users/${userUid}`, JSON.stringify(param));
       console.log('Resposta da API de chats:', response.data.chats);
 
       if (Array.isArray(response.data.chats)) {
         setChats(response.data.chats);
-        setShowBottomNavigation(response.data.chats.length > 0);
-        console.log('chats.length:', response.data.chats.length);
+        setHasMore(response.data.pagination.hasMore);
+        setNextCursor(response.data.pagination.nextCursor);
       } else {
-        console.warn('Resposta inesperada da API');
         setChats([]);
-        setShowBottomNavigation(false);
       }
-      setLoadingChats(false);
+
+      setShowBottomNavigation(response.data.chats.length > 0);
     } catch (error) {
-      console.error('Erro ao buscar chats:', error);
-      setErrorChats('Erro ao carregar as conversas. Tente novamente mais tarde.');
+      setErrorChats('Erro ao carregar as conversas.');
+    } finally {
       setLoadingChats(false);
-      setShowBottomNavigation(false);
     }
   };
 
+  const loadMoreChats = async () => {
+    if (!hasMore || loadingChats) return;
+
+    setLoadingChats(true);
+    setErrorChats(null);
+    try {
+      const userUid = await AsyncStorage.getItem('uid');
+      if (!userUid || !nextCursor) return;
+
+      const response = await axiosService.get(`/chats/users/${userUid}`, {
+        params: {
+          limit: 3,
+          lastChatId: nextCursor,
+          orderBy: 'timestamp',
+          direction: 'desc'
+        }
+      });
+
+      if (Array.isArray(response.data.chats)) {
+        setChats(prev => [...(prev || []), ...response.data.chats]);
+        setHasMore(response.data.pagination.hasMore);
+        setNextCursor(response.data.pagination.nextCursor);
+      }
+    } catch (error) {
+      setErrorChats('Erro ao carregar mais conversas.');
+    } finally {
+      setLoadingChats(false);
+    }
+  };
+
+  
   const filteredChats = chats?.filter((chat) =>
-    chat.problem?.toLowerCase().includes(searchQuery.toLowerCase())
+  chat.problem?.toLowerCase().includes(searchQuery.toLowerCase()) || !searchQuery
   ) || [];
 
   useEffect(() => {
@@ -231,12 +263,17 @@ const IntroScreen = () => {
                       numberOfLines={3}
                       ellipsizeMode="tail"
                     >
-                      {chat.description}
+                      {chat.description || 'Descrição não especificada'}
                     </Paragraph>
                   </Card.Content>
                 </Card>
               </TouchableOpacity>
             ))}
+            {hasMore && !loadingChats && (
+              <TouchableOpacity onPress={loadMoreChats} style={{ padding: 16, alignItems: 'center' }}>
+                <Text style={{ color: '#028C48', fontSize: 16 }}>Ver mais conversas</Text>
+              </TouchableOpacity>
+            )}
           </ScrollView>
         )}
       </View>
