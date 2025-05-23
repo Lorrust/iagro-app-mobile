@@ -69,11 +69,11 @@ const IntroScreen = () => {
 
       console.log(`Buscando conversas para o UID: ${userUid}`);
       const param = {
-        limit: 3,
-          orderBy: 'timestamp',
-          direction: 'desc'
+        "limit": 3,
+        "orderByField": 'timestamp',
+        "orderDirection": 'desc'
       }
-      const response = await axiosService.get(`/chats/users/${userUid}`, JSON.stringify(param));
+      const response = await axiosService.get(`/chats/users/${userUid}`, param);
       console.log('Resposta da API de chats:', response.data.chats);
 
       if (Array.isArray(response.data.chats)) {
@@ -103,10 +103,10 @@ const IntroScreen = () => {
 
       const response = await axiosService.get(`/chats/users/${userUid}`, {
         params: {
-          limit: 3,
-          lastChatId: nextCursor,
-          orderBy: 'timestamp',
-          direction: 'desc'
+          "limit": 3,
+          "lastChatId": nextCursor,
+          "orderByField": 'timestamp',
+          "orderDirection": 'desc'
         }
       });
 
