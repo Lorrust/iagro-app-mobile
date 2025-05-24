@@ -36,6 +36,12 @@ const IntroScreen = () => {
   const [hasMore, setHasMore] = useState(true);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
 
+  useEffect(() => {
+    console.log('Valor de hasMore:', hasMore);
+    console.log('Quantidade de chats carregados:', chats?.length);
+  }, [hasMore, chats]);
+
+
   const handleOpenGalleryDirect = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
@@ -69,12 +75,13 @@ const IntroScreen = () => {
 
       console.log(`Buscando conversas para o UID: ${userUid}`);
       const param = {
-        "limit": 3,
+        "limit": 5,
         "orderByField": 'timestamp',
         "orderDirection": 'desc'
       }
       const response = await axiosService.get(`/chats/users/${userUid}`, param);
       console.log('Resposta da API de chats:', response.data.chats);
+      console.log('Response total dados' ,response)
 
       if (Array.isArray(response.data.chats)) {
         setChats(response.data.chats);
@@ -97,32 +104,38 @@ const IntroScreen = () => {
 
     setLoadingChats(true);
     setErrorChats(null);
+
     try {
       const userUid = await AsyncStorage.getItem('uid');
-      if (!userUid || !nextCursor) return;
+      console.log('🔍 loadMoreChats: UID encontrado?', userUid);
+      console.log('🔍 Próximo cursor:', nextCursor);
 
-      const response = await axiosService.get(`/chats/users/${userUid}`, {
-        params: {
-          "limit": 3,
-          "lastChatId": nextCursor,
-          "orderByField": 'timestamp',
-          "orderDirection": 'desc'
-        }
-      });
+      if (!userUid || !nextCursor) {
+        console.warn('UID ou cursor ausente ao tentar carregar mais chats.');
+        return;
+      }
+
+      const response = await axiosService.get(
+        `/chats/users/${userUid}?limit=5&lastChatId=${nextCursor}`
+      );
+
+      console.log('📥 Novas conversas recebidas:', response.data.chats);
 
       if (Array.isArray(response.data.chats)) {
-        setChats(prev => [...(prev || []), ...response.data.chats]);
+        setChats((prev) => [...(prev || []), ...response.data.chats]);
         setHasMore(response.data.pagination.hasMore);
         setNextCursor(response.data.pagination.nextCursor);
       }
     } catch (error) {
+      console.error('❌ Erro ao carregar mais conversas:', error);
       setErrorChats('Erro ao carregar mais conversas.');
     } finally {
       setLoadingChats(false);
     }
   };
 
-  
+
+
   const filteredChats = chats?.filter((chat) =>
   chat.problem?.toLowerCase().includes(searchQuery.toLowerCase()) || !searchQuery
   ) || [];
@@ -270,7 +283,7 @@ const IntroScreen = () => {
               </TouchableOpacity>
             ))}
             {hasMore && !loadingChats && (
-              <TouchableOpacity onPress={loadMoreChats} style={{ padding: 16, alignItems: 'center' }}>
+              <TouchableOpacity onPress={loadMoreChats} style={{ padding: 10, alignItems: 'center' }}>
                 <Text style={{ color: '#028C48', fontSize: 16 }}>Ver mais conversas</Text>
               </TouchableOpacity>
             )}
@@ -429,7 +442,7 @@ const styles = StyleSheet.create({
   chatsListContainer: {
     paddingHorizontal: 10,
     //width: '100%',
-    paddingBottom: 20,
+    paddingBottom: 70,
     paddingTop: 20,
   },
   cardWrapper: {
