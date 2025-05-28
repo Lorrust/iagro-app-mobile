@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -9,9 +9,12 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons'; // ou 'react-native-vector-icons/Ionicons'
+import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams, router } from 'expo-router';
 import LogoCopagroUsers from '../components/LogoCopagroUsers';
+import axiosService from '../../services/axiosService';
 
 type ChatMessage = {
   id: string;
@@ -22,17 +25,88 @@ type ChatMessage = {
   titulo?: string;
   descricao?: string;
   recomendacao?: string;
-  timestamp: string; // ISO string
+  timestamp: string;
 };
 
-type Props = {
-  messages: ChatMessage[];
-  onSend: (text: string) => void;
-  onBack: () => void;
-};
-
-const Chats: React.FC<Props> = ({ messages, onSend, onBack }) => {
+const ChatScreen = () => {
+  const { chatId } = useLocalSearchParams<{ chatId: string }>();
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchMessages = async () => {
+      try {
+        if (!chatId) {
+          setError('Chat ID não fornecido.');
+          return;
+        }
+
+        const chatParams = { limit: 2 };
+        const response = await axiosService.get(`/chats/${chatId}/messages`, chatParams);
+
+        if (Array.isArray(response.data.messages)) {
+          const parsedMessages: ChatMessage[] = response.data.messages.map((msg: any) => {
+            const isUser = msg.sender === 'user';
+            const timestamp = new Date((msg.timestamp?._seconds ?? 0) * 1000).toISOString();
+
+            if (msg.diagnosis) {
+              return {
+                id: msg.id,
+                isFromUser: isUser,
+                type: 'diagnostico',
+                titulo: msg.title ?? msg.diagnosis?.problem,
+                descricao: msg.diagnosis?.description,
+                recomendacao: msg.diagnosis?.recommendation,
+                timestamp,
+              };
+            }
+
+            return {
+              id: msg.id,
+              isFromUser: isUser,
+              type: 'text',
+              text: msg.content ?? '',
+              timestamp,
+            };
+          });
+
+          setMessages(parsedMessages);
+        } else {
+          setMessages([]);
+        }
+      } catch (err) {
+        console.error('Erro ao buscar mensagens:', err);
+        setError('Erro ao carregar as mensagens.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchMessages();
+  }, [chatId]);
+
+
+  const handleSend = async () => {
+    if (input.trim() === '') return;
+
+    const newMessage: ChatMessage = {
+      id: `${Date.now()}`,
+      isFromUser: true,
+      type: 'text',
+      text: input.trim(),
+      timestamp: new Date().toISOString(),
+    };
+
+    setMessages((prev) => [newMessage, ...prev]);
+    setInput('');
+
+    try {
+      await axiosService.post(`/chats/${chatId}/messages`, newMessage);
+    } catch (error) {
+      console.error('Erro ao enviar mensagem:', error);
+    }
+  };
 
   const renderMessage = ({ item }: { item: ChatMessage }) => {
     const isUser = item.isFromUser;
@@ -62,12 +136,25 @@ const Chats: React.FC<Props> = ({ messages, onSend, onBack }) => {
     );
   };
 
-  const handleSend = () => {
-    if (input.trim() !== '') {
-      onSend(input.trim());
-      setInput('');
-    }
-  };
+  if (loading) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color="#028C48" />
+        <Text style={{ marginTop: 12 }}>Carregando conversa...</Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.centered}>
+        <Text style={{ color: 'red', fontSize: 16 }}>{error}</Text>
+        <Text style={{ marginTop: 8 }} onPress={() => router.back()}>
+          Voltar
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
@@ -78,7 +165,7 @@ const Chats: React.FC<Props> = ({ messages, onSend, onBack }) => {
         <LogoCopagroUsers />
       </View>
 
-      <TouchableOpacity style={styles.backButton} onPress={onBack}>
+      <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
         <Ionicons name="arrow-back" size={24} color="white" />
       </TouchableOpacity>
 
@@ -114,6 +201,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F3F3F3',
+  },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   logoHeader: {
     padding: 8,
@@ -192,4 +284,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default Chats;
+export default ChatScreen;

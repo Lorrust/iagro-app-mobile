@@ -165,8 +165,8 @@ const IntroScreen = () => {
 
   const handleCardPress = (chatId: string) => {
     console.log('Abrir chat com ID:', chatId);
-    alert(`Abrir conversa com ID: ${chatId}`);
-    // router.push(`/Screens/ChatDetail/${chatId}`);
+    //alert(`Abrir conversa com ID: ${chatId}`);
+    router.push(`/Screens/Chats?chatId=${chatId}`);
   };
 
   const handleNavigationChange = (index: number) => {
