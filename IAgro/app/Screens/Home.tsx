@@ -35,6 +35,7 @@ const IntroScreen = () => {
   const [isGalleryVisible, setIsGalleryVisible] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [message, setMessage] = useState('');
 
   useEffect(() => {
     console.log('Valor de hasMore:', hasMore);
@@ -76,8 +77,6 @@ const IntroScreen = () => {
       console.log(`Buscando conversas para o UID: ${userUid}`);
       const param = {
         "limit": 5,
-        "orderByField": 'timestamp',
-        "orderDirection": 'desc'
       }
       const response = await axiosService.get(`/chats/users/${userUid}`, param);
       console.log('Resposta da API de chats:', response.data.chats);
@@ -154,11 +153,49 @@ const IntroScreen = () => {
     setIsCameraVisible(true);
   };
 
-  const handleConfirm = () => {
-    console.log('Foto confirmada:', photoUri);
-    alert('Foto confirmada! Implementação de envio pendente.');
+  const handleConfirm = async () => {
+  try {
+    if (!photoUri) return;
+
+    const userUid = await AsyncStorage.getItem('uid');
+    if (!userUid) {
+      alert('Usuário não identificado.');
+      return;
+    }
+
+    const formData = new FormData();
+
+    // Adiciona o arquivo PNG
+    formData.append('file', {
+      uri: photoUri,
+      type: 'image/png',
+      name: 'foto.png',
+    } as any); // "as any" necessário para evitar erro de tipo no TS/React Native
+
+    // Adiciona a mensagem (se tiver)
+    if (message.trim() !== '') {
+      formData.append('message', message.trim());
+    }
+
+    await axiosService.post(
+      `/chats/${userUid}/message`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
+
+    alert('Foto enviada com sucesso!');
     setPhotoUri(null);
-  };
+    setMessage('');
+  } catch (error) {
+    console.error('Erro ao enviar foto:', error);
+    alert('Erro ao enviar a foto. Tente novamente.');
+  }
+};
+
 
   const handleCancelCamera = () => setIsCameraVisible(false);
   const handleCancelGallery = () => setIsGalleryVisible(false);
@@ -198,18 +235,31 @@ const IntroScreen = () => {
 
   if (photoUri) {
     return (
-      <View style={styles.container}>
-        <LogoCopagroUsers />
-        <View style={styles.previewContainer}>
-          <View style={styles.overlay}>
-            <Image source={{ uri: photoUri }} style={styles.photoPreview} resizeMode="contain" />
-          </View>
-          <View style={styles.actions}>
-            <IconButton icon="check" onPress={handleConfirm} size={36} style={styles.confirm} iconColor="#fff" />
-            <IconButton icon="camera-retake" onPress={handleRetake} size={36} style={styles.retake} iconColor="#fff" />
-          </View>
-        </View>
+      <ScrollView contentContainerStyle={styles.previewContainer}>
+      <LogoCopagroUsers />
+      <Image source={{ uri: photoUri }} style={styles.photoPreview} resizeMode="contain" />
+
+      <TextInput
+        placeholder="Escreva uma mensagem (opcional)"
+        value={message}
+        onChangeText={setMessage}
+        multiline
+        numberOfLines={3}
+        style={{
+          backgroundColor: 'white',
+          borderRadius: 12,
+          padding: 10,
+          elevation: 2,
+          width: '90%',
+          marginTop: 20,
+        }}
+      />
+
+      <View style={styles.actions}>
+        <IconButton icon="check" onPress={handleConfirm} size={36} style={styles.confirm} iconColor="#fff" />
+        <IconButton icon="camera-retake" onPress={handleRetake} size={36} style={styles.retake} iconColor="#fff" />
       </View>
+    </ScrollView>
     );
   }
 
@@ -420,9 +470,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   photoPreview: {
-    width: 350,
-    height: 500,
-    borderRadius: 10,
+  width: '100%',
+  aspectRatio: 2 / 2, // proporção vertical típica (ajuste conforme necessário)
+  borderRadius: 12,
+  backgroundColor: '#ccc', // para debug
+  alignSelf: 'center',
   },
   actions: {
     flexDirection: 'row',

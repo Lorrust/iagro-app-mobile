@@ -26,25 +26,25 @@ axiosInstance.interceptors.response.use(
 );
 
 // Funções utilitárias
-const get = (url, params = {}) => {
-  return requisition(url, 'get', null, params);
+const get = (url, params = {}, config = {}) => {
+  return requisition(url, 'get', null, params, config);
 };
 
-const post = (url, data) => {
-  return requisition(url, 'post', data);
+const post = (url, data, config = {}) => {
+  return requisition(url, 'post', data, {}, config);
 };
 
-const put = (url, data) => {
-  return requisition(url, 'put', data);
+const put = (url, data, config = {}) => {
+  return requisition(url, 'put', data, {}, config);
 };
 
-const del = (url, data) => {
-  return requisition(url, 'delete', data);
+const del = (url, data, config = {}) => {
+  return requisition(url, 'delete', data, {}, config);
 };
+
 
 // Função principal para requisitar
-const requisition = async (url, method, data = null, params = {}) => {
-  // Obtém o token e id-company do AsyncStorage
+const requisition = async (url, method, data = null, params = {}, config = {}) => {
   const userData = await AsyncStorage.getItem('user');
   const user = userData ? JSON.parse(userData) : null;
   const token = user ? user.token : null;
@@ -54,6 +54,7 @@ const requisition = async (url, method, data = null, params = {}) => {
     ...(token && { token }),
     ...(idCompany && { 'id-company': idCompany }),
     "X-Requested-With": "XMLHttpRequest",
+    ...config.headers, // ← importante: mesclar headers adicionais
   };
 
   try {
@@ -63,6 +64,7 @@ const requisition = async (url, method, data = null, params = {}) => {
       data,
       headers,
       params,
+      ...config, // ← passa o restante do config também, como timeout, etc
     });
 
     return response.data;
