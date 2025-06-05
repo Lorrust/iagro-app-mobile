@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Image, Text, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { TextInput, IconButton, Card, Title, Paragraph, BottomNavigation } from 'react-native-paper';
+import { Swipeable, RectButton } from 'react-native-gesture-handler';
 import LogoCopagroUsers from '../components/LogoCopagroUsers';
 import CameraCapture from '../components/CreateCapture';
 import UserGalleryScreen from '../components/UserGalleryScreen';
@@ -17,10 +18,12 @@ interface ChatData {
     _seconds: number;
     _nanoseconds: number;
   };
-  category?: string;
-  problem?: string;
-  description?: string;
-  recommendation?: string;
+  lastDiagnosis?: {
+    category?: string;
+    problem?: string;
+    description?: string;
+    recommendation?: string;
+  };
 }
 
 const IntroScreen = () => {
@@ -58,6 +61,16 @@ const IntroScreen = () => {
 
     if (!result.canceled && result.assets && result.assets.length > 0) {
       handlePhotoCaptured(result.assets[0].uri);
+    }
+  };
+
+  const handleDeleteChat = async (chatId: string) => {
+    try {
+      await axiosService.del(`/chats/${chatId}`);
+      setChats((prev) => prev?.filter(chat => chat.id !== chatId) || []);
+    } catch (error) {
+      console.error('Erro ao excluir o chat:', error);
+      alert('Erro ao excluir o chat.');
     }
   };
 
@@ -135,9 +148,16 @@ const IntroScreen = () => {
 
 
 
-  const filteredChats = chats?.filter((chat) =>
-  chat.problem?.toLowerCase().includes(searchQuery.toLowerCase()) || !searchQuery
-  ) || [];
+  const filteredChats = chats?.filter((chat) => {
+  const query = searchQuery.toLowerCase();
+  return (
+    chat.title?.toLowerCase().includes(query) ||
+    chat.lastDiagnosis?.problem?.toLowerCase().includes(query) ||
+    chat.lastDiagnosis?.description?.toLowerCase().includes(query) ||
+    !searchQuery
+  );
+  }) || [];
+
 
   useEffect(() => {
     fetchUserChats();
@@ -156,6 +176,11 @@ const IntroScreen = () => {
   const handleConfirm = async () => {
   try {
     if (!photoUri) return;
+
+    if (!message.trim()) {
+    alert('Por favor, escreva uma mensagem antes de enviar.');
+    return;
+    }
 
     const userUid = await AsyncStorage.getItem('uid');
     if (!userUid) {
@@ -236,32 +261,50 @@ const IntroScreen = () => {
   if (photoUri) {
     return (
       <ScrollView contentContainerStyle={styles.previewContainer}>
-      <LogoCopagroUsers />
-      <Image source={{ uri: photoUri }} style={styles.photoPreview} resizeMode="contain" />
+        <LogoCopagroUsers />
+        <Image source={{ uri: photoUri }} style={styles.photoPreview} resizeMode="contain" />
 
-      <TextInput
-        placeholder="Escreva uma mensagem (opcional)"
-        value={message}
-        onChangeText={setMessage}
-        multiline
-        numberOfLines={3}
-        style={{
-          backgroundColor: 'white',
-          borderRadius: 12,
-          padding: 10,
-          elevation: 2,
-          width: '90%',
-          marginTop: 20,
-        }}
-      />
+        <TextInput
+          placeholder="Detalhe o seu problema (obrigatório)"
+          value={message}
+          onChangeText={setMessage}
+          multiline
+          numberOfLines={3}
+          style={{
+            backgroundColor: 'white',
+            borderRadius: 12,
+            padding: 10,
+            elevation: 2,
+            width: '90%',
+            marginTop: 20,
+          }}
+        />
 
-      <View style={styles.actions}>
-        <IconButton icon="check" onPress={handleConfirm} size={36} style={styles.confirm} iconColor="#fff" />
-        <IconButton icon="camera-retake" onPress={handleRetake} size={36} style={styles.retake} iconColor="#fff" />
-      </View>
-    </ScrollView>
+        <View style={styles.actions}>
+          <IconButton
+            icon="check"
+            onPress={handleConfirm}
+            size={36}
+            style={[
+              styles.confirm,
+              { opacity: message.trim() ? 1 : 0.5 }
+            ]}
+            iconColor="#fff"
+            disabled={!message.trim()}
+          />
+          <IconButton
+            icon="camera-retake"
+            onPress={handleRetake}
+            size={36}
+            style={styles.retake}
+            iconColor="#fff"
+          />
+        </View>
+      </ScrollView>
     );
   }
+
+
 
   return (
     <View style={styles.container}>
@@ -311,27 +354,36 @@ const IntroScreen = () => {
         {!loadingChats && !errorChats && filteredChats.length > 0 && (
           <ScrollView contentContainerStyle={styles.chatsListContainer} showsVerticalScrollIndicator={true} bounces={false}>
             {filteredChats.map((chat) => (
-              <TouchableOpacity
+              <Swipeable
                 key={chat.id}
-                onPress={() => handleCardPress(chat.id)}
-                style={styles.cardWrapper}
+                renderRightActions={() => (
+                  <RectButton
+                    style={styles.deleteButton}
+                    onPress={() => handleDeleteChat(chat.id)}
+                  >
+                    <IconButton icon="delete" iconColor="#fff" />
+                  </RectButton>
+                )}
               >
-                <Card style={styles.chatCard}>
-                  <Card.Content>
-                    <Title style={styles.cardTitle}>
-                      {chat.title || 'Titulo não especificado'}
-                    </Title>
-                    <Paragraph
-                      style={styles.cardDescription}
-                      numberOfLines={3}
-                      ellipsizeMode="tail"
-                    >
-                      {chat.description || 'Descrição não especificada'}
-                    </Paragraph>
-                  </Card.Content>
-                </Card>
-              </TouchableOpacity>
+                <TouchableOpacity onPress={() => handleCardPress(chat.id)} style={styles.cardWrapper}>
+                  <Card style={styles.chatCard}>
+                    <Card.Content>
+                      <Title style={styles.cardTitle}>
+                        {chat.title || 'Título não especificado'}
+                      </Title>
+                      <Paragraph
+                        style={styles.cardDescription}
+                        numberOfLines={3}
+                        ellipsizeMode="tail"
+                      >
+                        {chat.lastDiagnosis?.description || 'Descrição não especificada'}
+                      </Paragraph>
+                    </Card.Content>
+                  </Card>
+                </TouchableOpacity>
+              </Swipeable>
             ))}
+
             {hasMore && !loadingChats && (
               <TouchableOpacity onPress={loadMoreChats} style={{ padding: 10, alignItems: 'center' }}>
                 <Text style={{ color: '#028C48', fontSize: 16 }}>Ver mais conversas</Text>
@@ -440,6 +492,14 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     paddingHorizontal: 20,
   },
+  deleteButton: {
+  backgroundColor: '#D32F2F',
+  justifyContent: 'center',
+  alignItems: 'center',
+  width: 70,
+  borderRadius: 12,
+  marginVertical: 8,
+  },
   seta: {
     width: 30,
     height: 30,
@@ -493,7 +553,6 @@ const styles = StyleSheet.create({
   },
   chatsListContainer: {
     paddingHorizontal: 10,
-    //width: '100%',
     paddingBottom: 70,
     paddingTop: 20,
   },
@@ -504,7 +563,7 @@ const styles = StyleSheet.create({
   },
   chatCard: {
   elevation: 30,
-  backgroundColor: '#E0E0E0',
+  backgroundColor: '#F8F8FF',
   marginHorizontal: 10,
   borderRadius: 12,
   padding: 10,

@@ -165,10 +165,6 @@ const ChatScreen = () => {
         <LogoCopagroUsers />
       </View>
 
-      <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-        <Ionicons name="arrow-back" size={24} color="white" />
-      </TouchableOpacity>
-
       <FlatList
         data={[...messages].reverse()}
         renderItem={renderMessage}
@@ -211,15 +207,6 @@ const styles = StyleSheet.create({
     padding: 8,
     alignItems: 'center',
     backgroundColor: '#F5F5F5',
-  },
-  backButton: {
-    position: 'absolute',
-    top: 60,
-    left: 16,
-    backgroundColor: '#4CAF50',
-    padding: 8,
-    borderRadius: 20,
-    zIndex: 1,
   },
   chatContent: {
     padding: 12,
