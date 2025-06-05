@@ -168,6 +168,13 @@ export default function SettingsScreen() {
         } else {
           console.warn('User UID não encontrado. Usuário não logado?');
         }
+        
+        if (response.data.idToken) {
+          await AsyncStorage.setItem('idToken', response.data.idToken);
+          console.log('idToken salvo com sucesso!');
+        } else {
+          console.warn('idToken não encontrado na resposta do login');
+        }
 
         // Navega para Home
         router.push('/Screens/Home');
