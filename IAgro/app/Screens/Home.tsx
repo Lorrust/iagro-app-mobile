@@ -398,16 +398,19 @@ const IntroScreen = () => {
       <View style={styles.customBottomBar}>
         <IconButton
           icon="home"
+          size={30}
           iconColor={navigationIndex === 0 ? '#FFFFFF' : '#FFFFFF'}
           onPress={() => handleNavigationChange(0)}
         />
         <IconButton
           icon="camera"
+          size={30}
           iconColor={navigationIndex === 1 ? '#FFFFFF' : '#FFFFFF'}
           onPress={() => handleNavigationChange(1)}
         />
         <IconButton
           icon="folder"
+          size={30}
           iconColor={navigationIndex === 2 ? '#FFFFFF' : '#FFFFFF'}
           onPress={() => handleNavigationChange(2)}
         />
