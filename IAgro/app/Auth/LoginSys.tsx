@@ -332,14 +332,13 @@ export default function SettingsScreen() {
 
   // Animação para subir (mostrar cadastro)
   const animateUp = () => {
-    setRegisterError(''); // Limpa erros de cadastro
+    setRegisterError(''); 
     setCorporateName('');
     setFullName('');
     setCpf('');
     setRegisterEmail('');
     setRegisterPassword('');
     setConfirmPassword('');
-    // Limpa erros de login também ao mudar de tela
     setLoginError('');
     setEmail('');
     setSenha('');
@@ -355,7 +354,7 @@ export default function SettingsScreen() {
 
   // Animação para descer (voltar para login)
   const animateDown = () => {
-    setRegisterError(''); // Limpa erros de cadastro
+    setRegisterError('');
     setCorporateName('');
     setFullName('');
     setCpf('');
@@ -388,8 +387,8 @@ export default function SettingsScreen() {
 
           {/* Usando TextInputCopagro para o Email de Login */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Email:</Text>
             <TextInputCopagro
+              label={"Email"}
               placeholder="Email"
               value={email}
               onChangeText={setEmail}
@@ -401,8 +400,8 @@ export default function SettingsScreen() {
 
           {/* Usando TextInputCopagro para a Senha de Login */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Senha:</Text>
             <TextInputCopagro
+              label={"Senha"}
               placeholder="Senha"
               value={senha}
               onChangeText={setSenha}
@@ -452,9 +451,8 @@ export default function SettingsScreen() {
 
             {/* Usando TextInputCopagro para Razão Social */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Razão social - Necessário para CNPJ</Text>
               <TextInputCopagro
-                label="Razão Social *Opcional "
+                label={"Razão social - Necessário para CNPJ"}
                 placeholder="Razão social"
                 value={corporateName}
                 onChangeText={onCorporateNameChange}
@@ -466,7 +464,6 @@ export default function SettingsScreen() {
               // Se Razão Social estiver preenchida, mostra o campo CNPJ e a nota
               <>
                 <View style={styles.inputGroup}>
-                  <Text style={styles.label}>CNPJ:</Text>
                   <TextInputCopagro
                     label="CNPJ"
                     placeholder="00.000.000/0000-00"
@@ -477,14 +474,10 @@ export default function SettingsScreen() {
                     editable={!loadingRegister}
                   />
                 </View>
-                <Text style={styles.noteText}>
-                  Ao preencher a Razão Social, o documento esperado passa a ser CNPJ (14 dígitos).
-                </Text>
               </>
             ) : (
               // Se Razão Social estiver vazia, mostra o campo CPF
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>CPF:</Text>
                 <TextInputCopagro
                   label="CPF"
                   placeholder="000.000.000-00"
@@ -499,8 +492,8 @@ export default function SettingsScreen() {
 
             {/* Usando TextInputCopagro para Nome completo */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Nome completo:</Text>
               <TextInputCopagro
+                label={"Nome completo"}
                 placeholder="Nome completo"
                 value={fullName}
                 onChangeText={setFullName}
@@ -510,8 +503,8 @@ export default function SettingsScreen() {
 
             {/* Usando TextInputCopagro para Email de Cadastro */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Email:</Text>
               <TextInputCopagro
+                label={"Email"}
                 placeholder="Email"
                 value={registerEmail}
                 onChangeText={setRegisterEmail}
@@ -523,9 +516,9 @@ export default function SettingsScreen() {
 
             {/* Usando TextInputCopagro para Senha de Cadastro */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Senha:</Text>
               <TextInputCopagro
-                placeholder="Senha"
+                label={"Senha"}
+                placeholder="A senha deve ter pelo menos 8 caracteres"
                 value={registerPassword}
                 onChangeText={setRegisterPassword}
                 secureTextEntry
@@ -535,9 +528,9 @@ export default function SettingsScreen() {
 
             {/* Usando TextInputCopagro para Confirmar Senha */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Confirmar senha:</Text>
               <TextInputCopagro
-                placeholder="Confirmar senha"
+                label={"Confirmar senha"}
+                placeholder="Digite novamente a senha"
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 secureTextEntry
@@ -608,13 +601,7 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 350,
     marginBottom: 10,
-  },
-  label: {
-    marginTop: 8,
-    marginBottom: 4,
-    fontWeight: '600',
-    fontSize: 14,
-    color: '#333',
+    paddingVertical: 5,
   },
   errorText: {
     color: 'red',
@@ -651,14 +638,5 @@ const styles = StyleSheet.create({
     bottom: 0,
     backgroundColor: '#fff',
     height: '100%',
-  },
-  noteText: {
-    fontSize: 12,
-    color: '#777',
-    marginTop: 5,
-    marginBottom: 10,
-    textAlign: 'left',
-    width: '100%',
-    maxWidth: 350,
   },
 });

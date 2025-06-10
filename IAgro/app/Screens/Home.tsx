@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Image, Text, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, StyleSheet, Image, Text, ScrollView, ActivityIndicator, TouchableOpacity, Animated  } from 'react-native';
 import { TextInput, IconButton, Card, Title, Paragraph, BottomNavigation } from 'react-native-paper';
 import { Swipeable, RectButton } from 'react-native-gesture-handler';
 import LogoCopagroUsers from '../components/LogoCopagroUsers';
@@ -39,13 +39,49 @@ const IntroScreen = () => {
   const [hasMore, setHasMore] = useState(true);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [message, setMessage] = useState('');
+  const swipeableRef = useRef<Swipeable | null>(null);
+  const [hasAnimatedHint, setHasAnimatedHint] = useState(false);
 
   useEffect(() => {
     console.log('Valor de hasMore:', hasMore);
     console.log('Quantidade de chats carregados:', chats?.length);
   }, [hasMore, chats]);
 
+  useEffect(() => {
+    // A condição para TENTAR a animação continua a mesma
+    if (!loadingChats && chats && chats.length > 0 && !hasAnimatedHint) {
+      
+      // Adicionamos um pequeno delay para garantir que a ref foi anexada
+      const animationTriggerTimeout = setTimeout(() => {
+        // A verificação da ref é feita AGORA, dentro do timeout
+        if (swipeableRef.current) {
+          setHasAnimatedHint(true); // Marcamos como animado
+          
+          swipeableRef.current.openRight(); // Abrimos o item
 
+          // Agendamos o fechamento
+          const closeTimeout = setTimeout(() => {
+            swipeableRef.current?.close();
+          }, 1500);
+
+          // Limpamos o timeout de fechamento se o componente for desmontado
+          return () => clearTimeout(closeTimeout);
+        }
+      }, 100); // Um delay curto (100ms) é suficiente
+
+      // Limpamos o timeout principal se as dependências mudarem
+      return () => clearTimeout(animationTriggerTimeout);
+    }
+  }, [chats, loadingChats, hasAnimatedHint]);
+
+  const renderRightActions = (progress: any, dragX: any, chatId: string) => {
+    return (
+        <RectButton style={styles.deleteButton} onPress={() => handleDeleteChat(chatId)}>
+            <IconButton icon="delete" iconColor="#fff" size={30} />
+        </RectButton>
+    );
+  };
+  
   const handleOpenGalleryDirect = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
@@ -66,7 +102,12 @@ const IntroScreen = () => {
 
   const handleDeleteChat = async (chatId: string) => {
     try {
-      await axiosService.del(`/chats/${chatId}`);
+      const userUid = await AsyncStorage.getItem('uid');
+      if (!userUid) {
+        alert('Usuário não identificado.');
+        return;
+      }
+      await axiosService.del(`/chats/${userUid}/${chatId}`);
       setChats((prev) => prev?.filter(chat => chat.id !== chatId) || []);
     } catch (error) {
       console.error('Erro ao excluir o chat:', error);
@@ -77,6 +118,7 @@ const IntroScreen = () => {
   const fetchUserChats = async () => {
     setLoadingChats(true);
     setErrorChats(null);
+    setHasAnimatedHint(false);
     try {
       const userUid = await AsyncStorage.getItem('uid');
       if (!userUid) {
@@ -353,17 +395,11 @@ const IntroScreen = () => {
 
         {!loadingChats && !errorChats && filteredChats.length > 0 && (
           <ScrollView contentContainerStyle={styles.chatsListContainer} showsVerticalScrollIndicator={true} bounces={false}>
-            {filteredChats.map((chat) => (
+            {filteredChats.map((chat, index) => (
               <Swipeable
                 key={chat.id}
-                renderRightActions={() => (
-                  <RectButton
-                    style={styles.deleteButton}
-                    onPress={() => handleDeleteChat(chat.id)}
-                  >
-                    <IconButton icon="delete" iconColor="#fff" />
-                  </RectButton>
-                )}
+                ref={index === 0 ? swipeableRef : null}
+                renderRightActions={(progress, dragX) => renderRightActions(progress, dragX, chat.id)}
               >
                 <TouchableOpacity onPress={() => handleCardPress(chat.id)} style={styles.cardWrapper}>
                   <Card style={styles.chatCard}>
