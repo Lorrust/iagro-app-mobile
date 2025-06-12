@@ -19,6 +19,7 @@ import axiosService from '../../services/axiosService';
 import * as ImagePicker from 'expo-image-picker';
 import CameraCapture from '../components/CreateCapture';
 import { IconButton } from 'react-native-paper';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type ChatMessage =
   | {
@@ -47,7 +48,9 @@ const ChatScreen = () => {
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [message, setMessage] = useState('');
   const [isCameraVisible, setIsCameraVisible] = useState(false);
-
+  const [contextEnabled, setContextEnabled] = useState(true);
+  const [isSending, setIsSending] = useState(false);
+  
   const fetchMessages = async () => {
     try {
       if (!chatId) {
@@ -112,7 +115,8 @@ const ChatScreen = () => {
   }, [chatId]);
 
   const handleSend = async () => {
-    if (input.trim() === '') return;
+    if (input.trim() === '' || !chatId) return;
+
     const newMessage: ChatMessage = {
       id: `${Date.now()}`,
       isFromUser: true,
@@ -120,15 +124,35 @@ const ChatScreen = () => {
       text: input.trim(),
       timestamp: new Date().toISOString(),
     };
+
     setMessages((prev) => [...prev, newMessage]);
     setInput('');
+
     try {
-      await axiosService.post(`/chats/${chatId}/messages`, newMessage);
+      const idToken = await AsyncStorage.getItem('idToken');
+      const userUid = await AsyncStorage.getItem('uid');
+
+      if (!idToken || !userUid) {
+        alert('Autenticação falhou.');
+        return;
+      }
+
+      await axiosService.post(
+        `/chats/${userUid}/message?chat=${chatId}&context=${contextEnabled}`,
+        { message: input.trim() },
+        {
+          headers: {
+            Authorization: `Bearer ${idToken}`,
+          },
+        }
+      );
+
       await fetchMessages();
     } catch (error) {
       console.error('Erro ao enviar mensagem:', error);
     }
   };
+
 
   const handlePhotoCaptured = (uri: string) => {
     setPhotoUri(uri);
@@ -136,8 +160,20 @@ const ChatScreen = () => {
   };
 
   const handleConfirm = async () => {
-    if (!photoUri || !chatId || !message.trim()) return;
-    try {
+  if (isSending || !photoUri || !chatId || !message.trim()) return;
+
+  try {
+      setIsSending(true);
+
+      const idToken = await AsyncStorage.getItem('idToken');
+      const userUid = await AsyncStorage.getItem('uid');
+
+      if (!idToken || !userUid) {
+        alert('Autenticação falhou.');
+        setIsSending(false);
+        return;
+      }
+
       const formData = new FormData();
       formData.append('file', {
         uri: photoUri,
@@ -145,9 +181,18 @@ const ChatScreen = () => {
         name: 'foto.png',
       } as any);
       formData.append('message', message.trim());
-      await axiosService.post(`/chats/${chatId}/message`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+
+      await axiosService.post(
+        `/chats/${userUid}/message?chat=${chatId}&context=${contextEnabled}`,
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${idToken}`,
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
+
       alert('Foto enviada com sucesso!');
       setPhotoUri(null);
       setMessage('');
@@ -155,6 +200,8 @@ const ChatScreen = () => {
     } catch (error) {
       console.error('Erro ao enviar foto:', error);
       alert('Erro ao enviar a foto.');
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -218,8 +265,22 @@ const ChatScreen = () => {
           style={styles.messageInput}
         />
         <View style={styles.actions}>
-          <IconButton icon="check" onPress={handleConfirm} size={36} style={styles.confirm} iconColor="#fff" disabled={!message.trim()} />
-          <IconButton icon="camera-retake" onPress={handleRetake} size={36} style={styles.retake} iconColor="#fff" />
+          <IconButton
+            icon={isSending ? 'loading' : 'check'}
+            onPress={handleConfirm}
+            size={36}
+            style={styles.confirm}
+            iconColor="#fff"
+            disabled={!message.trim() || isSending}
+          />
+
+          <IconButton 
+            icon="camera-retake"
+            onPress={handleRetake}
+            size={36}
+            style={styles.retake} 
+            iconColor="#fff"
+          />
         </View>
       </ScrollView>
     );
@@ -238,7 +299,7 @@ const ChatScreen = () => {
         <TextInput
           value={input}
           onChangeText={setInput}
-          placeholder="Pergunte para a IA..."
+          placeholder="IAGRO pode cometer erros, utilize com cautela!"
           style={styles.textInput}
         />
         <TouchableOpacity onPress={handleSend}>

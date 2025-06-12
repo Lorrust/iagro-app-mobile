@@ -41,6 +41,7 @@ const IntroScreen = () => {
   const [message, setMessage] = useState('');
   const swipeableRef = useRef<Swipeable | null>(null);
   const [hasAnimatedHint, setHasAnimatedHint] = useState(false);
+  const [isSending, setIsSending] = useState(false);
 
   useEffect(() => {
     console.log('Valor de hasMore:', hasMore);
@@ -216,52 +217,53 @@ const IntroScreen = () => {
   };
 
   const handleConfirm = async () => {
+  if (isSending) return;
+
   try {
-    if (!photoUri) return;
+      if (!photoUri) return;
 
-    if (!message.trim()) {
-    alert('Por favor, escreva uma mensagem antes de enviar.');
-    return;
-    }
+      if (!message.trim()) {
+        alert('Por favor, escreva uma mensagem antes de enviar.');
+        return;
+      }
 
-    const userUid = await AsyncStorage.getItem('uid');
-    if (!userUid) {
-      alert('Usuário não identificado.');
-      return;
-    }
+      const userUid = await AsyncStorage.getItem('uid');
+      if (!userUid) {
+        alert('Usuário não identificado.');
+        return;
+      }
 
-    const formData = new FormData();
+      const idToken = await AsyncStorage.getItem('idToken');
 
-    // Adiciona o arquivo PNG
-    formData.append('file', {
-      uri: photoUri,
-      type: 'image/png',
-      name: 'foto.png',
-    } as any); // "as any" necessário para evitar erro de tipo no TS/React Native
+      const formData = new FormData();
+      formData.append('file', {
+        uri: photoUri,
+        type: 'image/png',
+        name: 'foto.png',
+      } as any);
 
-    // Adiciona a mensagem (se tiver)
-    if (message.trim() !== '') {
-      formData.append('message', message.trim());
-    }
+      if (message.trim() !== '') {
+        formData.append('message', message.trim());
+      }
 
-    await axiosService.post(
-      `/chats/${userUid}/message`,
-      formData,
-      {
+      setIsSending(true);
+
+      await axiosService.post(`/chats/${userUid}/message`, formData, {
         headers: {
+          Authorization: `Bearer ${idToken}`,
           'Content-Type': 'multipart/form-data',
         },
-      }
-    );
+      });
 
-    alert('Foto enviada com sucesso!');
-    setPhotoUri(null);
-    setMessage('');
-  } catch (error) {
-    console.error('Erro ao enviar foto:', error);
-    alert('Erro ao enviar a foto. Tente novamente.');
-  }
-};
+      // Aqui você pode limpar o formulário, fechar o modal etc.
+
+    } catch (error) {
+      console.error(error);
+      alert('Erro ao enviar a imagem. Tente novamente.');
+    } finally {
+      setIsSending(false); // Destrava o botão apenas em caso de erro
+    }
+  };
 
 
   const handleCancelCamera = () => setIsCameraVisible(false);
@@ -324,15 +326,15 @@ const IntroScreen = () => {
 
         <View style={styles.actions}>
           <IconButton
-            icon="check"
+            icon={isSending ? 'loading' : 'check'} // opcional: ícone diferente se enviando
             onPress={handleConfirm}
             size={36}
             style={[
               styles.confirm,
-              { opacity: message.trim() ? 1 : 0.5 }
+              { opacity: message.trim() && !isSending ? 1 : 0.5 }
             ]}
             iconColor="#fff"
-            disabled={!message.trim()}
+            disabled={!message.trim() || isSending}
           />
           <IconButton
             icon="camera-retake"
