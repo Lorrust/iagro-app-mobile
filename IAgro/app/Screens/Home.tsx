@@ -116,10 +116,11 @@ const IntroScreen = () => {
     }
   };
 
-  const fetchUserChats = async () => {
+  const fetchUserChats = async (overrideLimit?: number) => {
     setLoadingChats(true);
     setErrorChats(null);
     setHasAnimatedHint(false);
+
     try {
       const userUid = await AsyncStorage.getItem('uid');
       if (!userUid) {
@@ -130,23 +131,31 @@ const IntroScreen = () => {
         return;
       }
 
-      console.log(`Buscando conversas para o UID: ${userUid}`);
-      const param = {
-        "limit": 5,
-      }
-      const response = await axiosService.get(`/chats/users/${userUid}`, param);
-      console.log('Resposta da API de chats:', response.data.chats);
-      console.log('Response total dados' ,response)
+      const effectiveLimit = overrideLimit ?? 5;
+      console.log(`📡 Buscando conversas com limit = ${effectiveLimit}`);
 
-      if (Array.isArray(response.data.chats)) {
-        setChats(response.data.chats);
+      const response = await axiosService.get(`/chats/users/${userUid}?limit=${effectiveLimit}`);
+      console.log('📨 Resposta da API de chats:', response.data.chats);
+      console.log('🧾 Resposta completa:', response);
+
+      const rawChats = response.data.chats ?? [];
+      const total = response.data.pagination?.totalDocs ?? 0;
+
+      // Se vier vazio mas o total > 0, tenta novamente com o total como limite
+      if (rawChats.length === 0 && total > 0 && !overrideLimit) {
+        console.warn('⚠️ Nenhum chat retornado, tentando novamente com limit totalDocs...');
+        return fetchUserChats(total);
+      }
+
+      if (Array.isArray(rawChats)) {
+        setChats(rawChats);
         setHasMore(response.data.pagination.hasMore);
         setNextCursor(response.data.pagination.nextCursor);
       } else {
         setChats([]);
       }
 
-      setShowBottomNavigation(response.data.chats.length > 0);
+      setShowBottomNavigation(rawChats.length > 0);
     } catch (error) {
       setErrorChats('Erro ao carregar as conversas.');
     } finally {
@@ -248,17 +257,26 @@ const IntroScreen = () => {
 
       setIsSending(true);
 
-      await axiosService.post(`/chats/${userUid}/message`, formData, {
+      const response = await axiosService.post(`/chats/${userUid}/message`, formData, {
         headers: {
           Authorization: `Bearer ${idToken}`,
           'Content-Type': 'multipart/form-data',
         },
       });
 
-      // Aqui você pode limpar o formulário, fechar o modal etc.
+      console.log('Resposta do envio de imagem:', response.data);
+      const createdChatId = response.data.iaResponse.chatId;
+
+      if (createdChatId) {
+        handleCardPress(createdChatId); // redireciona o usuário
+        setPhotoUri(null); // limpa o estado da imagem
+        setMessage('');    // limpa a mensagem
+      } else {
+        alert('Erro ao obter o ID da conversa criada.');
+      }
 
     } catch (error) {
-      console.error(error);
+      //console.error(error);
       alert('Erro ao enviar a imagem. Tente novamente.');
     } finally {
       setIsSending(false); // Destrava o botão apenas em caso de erro
@@ -372,7 +390,7 @@ const IntroScreen = () => {
         {errorChats && (
           <View style={styles.centeredContent}>
             <Text style={styles.errorText}>{errorChats}</Text>
-            <TouchableOpacity onPress={fetchUserChats} style={{ marginTop: 20 }}>
+            <TouchableOpacity onPress={() => fetchUserChats()} style={{ marginTop: 20 }}>
               <Text style={styles.retryText}>Tentar carregar novamente</Text>
             </TouchableOpacity>
           </View>

@@ -28,6 +28,7 @@ type ChatMessage =
       type: 'text';
       text: string;
       timestamp: string;
+      imageUrl?: string;
     }
   | {
       id: string;
@@ -35,6 +36,7 @@ type ChatMessage =
       type: 'diagnostico';
       titulo?: string;
       descricao?: string;
+      problema?: string;
       recomendacao?: string;
       timestamp: string;
     };
@@ -50,19 +52,39 @@ const ChatScreen = () => {
   const [isCameraVisible, setIsCameraVisible] = useState(false);
   const [contextEnabled, setContextEnabled] = useState(true);
   const [isSending, setIsSending] = useState(false);
-  
-  const fetchMessages = async () => {
+  const [showLoadMore, setShowLoadMore] = useState(false);
+  const [limit, setLimit] = useState(10);
+
+  const fetchMessages = async (overrideLimit?: number) => {
     try {
       if (!chatId) {
         setError('Chat ID não fornecido.');
         return;
       }
-      const response = await axiosService.get(`/chats/${chatId}/messages`, { limit: 2 });
-      if (Array.isArray(response.data.messages)) {
+
+      const effectiveLimit = overrideLimit ?? limit;
+
+      const response = await axiosService.get(`/chats/${chatId}/messages?limit=${effectiveLimit}`);
+
+      const total = response.data.pagination?.totalSubDocs || 0;
+      const rawMessages = response.data.messages || [];
+
+      // 🧠 Tenta novamente com totalSubDocs se vier vazio
+      if (rawMessages.length === 0 && total > 0 && !overrideLimit) {
+        console.warn('⚠️ Nenhuma mensagem retornada, tentando novamente com limit totalSubDocs...');
+        return fetchMessages(total);
+      }
+
+      setShowLoadMore(total > effectiveLimit);
+
+      console.log('✅ Mensagens carregadas:', rawMessages);
+
+      if (Array.isArray(rawMessages)) {
         type MessageFromApi = {
           id: string;
           sender: string;
           content?: string;
+          imageUrl?: string;
           title?: string;
           diagnosis?: {
             problem?: string;
@@ -72,50 +94,72 @@ const ChatScreen = () => {
           timestamp?: { _seconds?: number };
         };
 
-        const parsedMessages = response.data.messages.map((msg: MessageFromApi) => {
+        const parsedMessages: ChatMessage[] = rawMessages.map((msg: MessageFromApi) => {
           const isUser = msg.sender === 'user';
           const timestamp = new Date((msg.timestamp?._seconds ?? 0) * 1000).toISOString();
+
           if (msg.diagnosis) {
             return {
               id: msg.id,
               isFromUser: isUser,
               type: 'diagnostico',
               titulo: msg.title ?? msg.diagnosis?.problem,
+              problema: msg.diagnosis?.problem,
               descricao: msg.diagnosis?.description,
               recomendacao: msg.diagnosis?.recommendation,
               timestamp,
             };
           }
+
           return {
             id: msg.id,
             isFromUser: isUser,
             type: 'text',
             text: msg.content ?? '',
+            imageUrl: msg.imageUrl,
             timestamp,
           };
         });
+
         parsedMessages.sort(
-          (a: { timestamp: string }, b: { timestamp: string }) =>
-            new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+          (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
         );
-        setMessages(parsedMessages);
+
+        if (
+          parsedMessages.length > 0 &&
+          !parsedMessages[parsedMessages.length - 1].isFromUser
+        ) {
+          parsedMessages.push({
+            id: 'placeholder-user-first',
+            isFromUser: true,
+            type: 'text',
+            text: '',
+            timestamp: parsedMessages[parsedMessages.length - 1].timestamp,
+          });
+        }
+
+        setMessages(parsedMessages.filter(m => m.id !== 'typing' && m.id !== 'typing-img'));
       } else {
         setMessages([]);
       }
-    } catch (err) {
-      console.error('Erro ao buscar mensagens:', err);
+    } catch (err: any) {
+      console.error('❌ Erro ao buscar mensagens:', err.response?.data || err.message);
       setError('Erro ao carregar as mensagens.');
     } finally {
       setLoading(false);
     }
   };
 
+
+
   useEffect(() => {
     fetchMessages();
-  }, [chatId]);
+  }, [chatId, limit]);
 
   const handleSend = async () => {
-    if (input.trim() === '' || !chatId) return;
+    if (input.trim() === '' || !chatId || isSending) return;
+
+    setIsSending(true);
 
     const newMessage: ChatMessage = {
       id: `${Date.now()}`,
@@ -125,7 +169,13 @@ const ChatScreen = () => {
       timestamp: new Date().toISOString(),
     };
 
-    setMessages((prev) => [...prev, newMessage]);
+    setMessages((prev) => [...prev, newMessage, {
+      id: 'typing',
+      isFromUser: false,
+      type: 'text',
+      text: 'Digitando...',
+      timestamp: new Date().toISOString(),
+    }]);
     setInput('');
 
     try {
@@ -139,7 +189,7 @@ const ChatScreen = () => {
 
       await axiosService.post(
         `/chats/${userUid}/message?chat=${chatId}&context=${contextEnabled}`,
-        { message: input.trim() },
+        { message: newMessage.text },
         {
           headers: {
             Authorization: `Bearer ${idToken}`,
@@ -147,9 +197,12 @@ const ChatScreen = () => {
         }
       );
 
-      await fetchMessages();
+      // Aguarda e atualiza chat após envio
+      setTimeout(fetchMessages, 1200); 
     } catch (error) {
       console.error('Erro ao enviar mensagem:', error);
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -162,9 +215,9 @@ const ChatScreen = () => {
   const handleConfirm = async () => {
   if (isSending || !photoUri || !chatId || !message.trim()) return;
 
-  try {
-      setIsSending(true);
+    setIsSending(true);
 
+    try {
       const idToken = await AsyncStorage.getItem('idToken');
       const userUid = await AsyncStorage.getItem('uid');
 
@@ -182,6 +235,20 @@ const ChatScreen = () => {
       } as any);
       formData.append('message', message.trim());
 
+      setMessages((prev) => [...prev, {
+        id: `${Date.now()}`,
+        isFromUser: true,
+        type: 'text',
+        text: message.trim(),
+        timestamp: new Date().toISOString(),
+      }, {
+        id: 'typing-img',
+        isFromUser: false,
+        type: 'text',
+        text: 'Digitando...',
+        timestamp: new Date().toISOString(),
+      }]);
+
       await axiosService.post(
         `/chats/${userUid}/message?chat=${chatId}&context=${contextEnabled}`,
         formData,
@@ -193,10 +260,12 @@ const ChatScreen = () => {
         }
       );
 
-      alert('Foto enviada com sucesso!');
       setPhotoUri(null);
       setMessage('');
-      await fetchMessages();
+
+      setTimeout(() => {
+        fetchMessages();
+      }, 2000);
     } catch (error) {
       console.error('Erro ao enviar foto:', error);
       alert('Erro ao enviar a foto.');
@@ -204,6 +273,7 @@ const ChatScreen = () => {
       setIsSending(false);
     }
   };
+
 
   const handleRetake = () => {
     setPhotoUri(null);
@@ -227,20 +297,33 @@ const ChatScreen = () => {
   };
 
   const renderMessage = ({ item }: { item: ChatMessage }) => {
-    const isUser = item.isFromUser;
+  const isUser = item.isFromUser;
+
     return (
       <View style={[styles.messageContainer, isUser ? styles.rightAlign : styles.leftAlign]}>
         <Text style={styles.timestamp}>{new Date(item.timestamp).toLocaleString()}</Text>
+
         {item.type === 'text' && (
           <View style={[styles.bubble, isUser ? styles.userBubble : styles.botBubble]}>
             <Text style={styles.bubbleText}>{item.text}</Text>
+            {item.imageUrl && (
+              <Image
+                source={{ uri: item.imageUrl }}
+                style={styles.imagePreview}
+                resizeMode="cover"
+              />
+            )}
           </View>
         )}
+
         {item.type === 'diagnostico' && (
           <View style={[styles.bubble, styles.botBubble]}>
-            <Text style={styles.boldWhite}>Praga: {item.titulo}</Text>
-            <Text style={styles.bubbleText}>Descrição: {item.descricao}</Text>
-            <Text style={styles.bubbleText}>Recomendação: {item.recomendacao}</Text>
+            {item.problema && <Text style={styles.boldWhite}>Problema: {item.problema}</Text>}
+            {item.titulo && <Text style={styles.boldWhite}>Praga: {item.titulo}</Text>}
+            {item.descricao && <Text style={styles.bubbleText}>Descrição: {item.descricao}</Text>}
+            {item.recomendacao && (
+              <Text style={styles.bubbleText}>Recomendação: {item.recomendacao}</Text>
+            )}
           </View>
         )}
       </View>
@@ -294,6 +377,17 @@ const ChatScreen = () => {
         renderItem={renderMessage}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.chatContent}
+        inverted
+        ListFooterComponent={
+          showLoadMore ? (
+            <TouchableOpacity
+              style={{ padding: 10, alignSelf: 'center' }}
+              onPress={() => setLimit((prev) => prev + 10)}
+            >
+              <Text style={{ color: '#028C48', fontWeight: 'bold' }}>Ver mais mensagens</Text>
+            </TouchableOpacity>
+          ) : null
+        }
       />
       <View style={[styles.inputContainer]}>
         <TextInput
@@ -302,8 +396,8 @@ const ChatScreen = () => {
           placeholder="IAGRO pode cometer erros, utilize com cautela!"
           style={styles.textInput}
         />
-        <TouchableOpacity onPress={handleSend}>
-          <Ionicons name="send" size={24} color="#4CAF50" />
+        <TouchableOpacity onPress={handleSend} disabled={isSending}>
+          <Ionicons name="send" size={24} color={isSending ? '#aaa' : '#4CAF50'} />
         </TouchableOpacity>
       </View>
       <View style={styles.customBottomBar}>
@@ -394,6 +488,13 @@ const styles = StyleSheet.create({
   },
   confirm: { backgroundColor: 'green', marginRight: 20 },
   retake: { backgroundColor: 'red' },
+  imagePreview: {
+  width: 200,
+  height: 200,
+  borderRadius: 8,
+  marginTop: 8,
+  backgroundColor: '#ccc',
+  },
 });
 
 export default ChatScreen;
