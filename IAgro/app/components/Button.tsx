@@ -9,15 +9,30 @@ interface ButtonCopagroProps {
   disabled?: boolean;
 }
 
-export const ButtonCopagro: React.FC<ButtonCopagroProps> = ({ icon, onPress }) => {
+export const ButtonCopagro: React.FC<ButtonCopagroProps> = ({ icon, onPress, label }) => {
+  
   return (
-    <IconButton
-      mode="contained"
-      icon={icon ?? 'arrow-right'}
-      iconColor='#f5f5f5'
-      onPress={onPress}
-      style={styles.button}
-    />
+    <>
+      {label ? (
+        <Button
+          mode="contained"
+          onPress={onPress}
+          style={styles.button}
+          contentStyle={styles.content}
+          labelStyle={styles.label}
+          disabled={false}
+        >
+          {label}
+        </Button>
+      ) : (
+        <IconButton
+          mode="contained"
+          icon={icon ?? 'arrow-right'}
+          iconColor='#f5f5f5'
+          onPress={onPress}
+          style={styles.button} />
+      )}
+    </>
   );
 };
 
