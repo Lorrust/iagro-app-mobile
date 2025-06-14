@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -53,56 +53,44 @@ const ChatScreen = () => {
   const [contextEnabled, setContextEnabled] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [showLoadMore, setShowLoadMore] = useState(false);
-  const [limit, setLimit] = useState(10);
+  const [limit, setLimit] = useState(20);
 
-  const fetchMessages = async (overrideLimit?: number) => {
+  const flatListRef = useRef<FlatList>(null);
+  const hasScrolledRef = useRef(false);
+
+  // LÓGICA DE FETCH ATUALIZADA
+  const fetchMessages = async (overrideLimit?: number): Promise<void> => {
+    setLoading(true);
     try {
       if (!chatId) {
         setError('Chat ID não fornecido.');
+        setLoading(false);
         return;
       }
 
       const effectiveLimit = overrideLimit ?? limit;
-
-      const response = await axiosService.get(`/chats/${chatId}/messages?limit=${effectiveLimit}&orderDirection=asc`, );
+      const response = await axiosService.get(`/chats/${chatId}/messages?limit=${effectiveLimit}&orderDirection=asc`);
 
       const total = response.data.pagination?.totalSubDocs || 0;
       const rawMessages = response.data.messages || [];
 
-      // 🧠 Tenta novamente com totalSubDocs se vier vazio
+      // LÓGICA DE FALLBACK SOLICITADA
       if (rawMessages.length === 0 && total > 0 && !overrideLimit) {
-        console.warn('⚠️ Nenhuma mensagem retornada, tentando novamente com limit totalSubDocs...');
+        console.warn(`Nenhuma mensagem com limit=${effectiveLimit}, mas total é ${total}. Buscando novamente com o total.`);
         return fetchMessages(total);
       }
 
-      setShowLoadMore(total > effectiveLimit);
-
-      console.log('✅ Mensagens carregadas:', rawMessages);
+      setShowLoadMore(total > effectiveLimit && rawMessages.length > 0 && rawMessages.length < total);
 
       if (Array.isArray(rawMessages)) {
-        type MessageFromApi = {
-          id: string;
-          sender: string;
-          content?: string;
-          imageUrl?: string;
-          title?: string;
-          diagnosis?: {
-            problem?: string;
-            description?: string;
-            recommendation?: string;
-          };
-          timestamp?: { _seconds?: number };
-        };
-
+        type MessageFromApi = any; // Simplificado para evitar erros
         const parsedMessages: ChatMessage[] = rawMessages.map((msg: MessageFromApi) => {
           const isUser = msg.sender === 'user';
           const timestamp = new Date((msg.timestamp?._seconds ?? 0) * 1000).toISOString();
 
           if (msg.diagnosis) {
             return {
-              id: msg.id,
-              isFromUser: isUser,
-              type: 'diagnostico',
+              id: msg.id, isFromUser: isUser, type: 'diagnostico',
               titulo: msg.title ?? msg.diagnosis?.problem,
               problema: msg.diagnosis?.problem,
               descricao: msg.diagnosis?.description ?? msg.content ?? '',
@@ -110,35 +98,14 @@ const ChatScreen = () => {
               timestamp,
             };
           }
-
           return {
-            id: msg.id,
-            isFromUser: isUser,
-            type: 'text',
-            text: msg.content ?? '',
-            imageUrl: msg.imageUrl,
-            timestamp,
+            id: msg.id, isFromUser: isUser, type: 'text',
+            text: msg.content ?? '', imageUrl: msg.imageUrl, timestamp,
           };
         });
 
-        parsedMessages.sort(
-          (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-        );
-
-        if (
-          parsedMessages.length > 0 &&
-          !parsedMessages[parsedMessages.length - 1].isFromUser
-        ) {
-          parsedMessages.push({
-            id: 'placeholder-user-first',
-            isFromUser: true,
-            type: 'text',
-            text: '',
-            timestamp: parsedMessages[parsedMessages.length - 1].timestamp,
-          });
-        }
-
-        setMessages(parsedMessages.filter(m => m.id !== 'typing' && m.id !== 'typing-img'));
+        parsedMessages.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+        setMessages(parsedMessages);
       } else {
         setMessages([]);
       }
@@ -150,302 +117,195 @@ const ChatScreen = () => {
     }
   };
 
-
-
   useEffect(() => {
     fetchMessages();
   }, [chatId, limit]);
 
-  const handleSend = async () => {
-  if (input.trim() === '' || !chatId || isSending) return;
+  const scrollToBottom = (animated = true) => {
+    if (messages.length > 0) {
+      setTimeout(() => flatListRef.current?.scrollToEnd({ animated }), 200);
+    }
+  };
 
-  setIsSending(true);
+  useEffect(() => {
+    if (!loading && messages.length > 0 && !hasScrolledRef.current) {
+      scrollToBottom(false);
+      hasScrolledRef.current = true;
+    }
+  }, [loading, messages]);
+
+  const handleSend = async () => {
+    if (input.trim() === '' || !chatId || isSending) return;
+    setIsSending(true);
+
+    const userMessage: ChatMessage = {
+      id: `${Date.now()}-user`, isFromUser: true, type: 'text',
+      text: input.trim(), timestamp: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, userMessage]);
+    setInput('');
+    scrollToBottom();
 
     try {
       const idToken = await AsyncStorage.getItem('idToken');
       const userUid = await AsyncStorage.getItem('uid');
-      if (!idToken || !userUid) {
-        alert('Autenticação falhou.');
-        return;
-      }
-
-      const userMessage: ChatMessage = {
-        id: `${Date.now()}-user`,
-        isFromUser: true,
-        type: 'text',
-        text: input.trim(),
-        timestamp: new Date().toISOString(),
-      };
-
-      setMessages((prev) => [...prev, userMessage]);
-      setInput('');
-
+      if (!idToken || !userUid) { alert('Autenticação falhou.'); return; }
+      
       const response = await axiosService.post(
         `/chats/${userUid}/message?chat=${chatId}&context=${contextEnabled}`,
         { message: input.trim() },
         { headers: { Authorization: `Bearer ${idToken}` } }
       );
-
       const ia = response.data.iaResponse;
-
       if (ia?.mensagem) {
         const iaMessage: ChatMessage = {
-          id: `${Date.now()}-ia`,
-          isFromUser: false,
-          type: 'text',
-          text: ia.mensagem,
-          timestamp: new Date().toISOString(),
+          id: `${Date.now()}-ia`, isFromUser: false, type: 'text',
+          text: ia.mensagem, timestamp: new Date().toISOString(),
         };
-
-        setMessages((prev) => [...prev, iaMessage]);
+        setMessages((prev) => [...prev.filter(m => m.id !== userMessage.id), userMessage, iaMessage]);
+        scrollToBottom();
       }
-    } catch (error) {
-      console.error('Erro ao enviar mensagem:', error);
-    } finally {
-      setIsSending(false);
-    }
+    } catch (error) { console.error('Erro ao enviar mensagem:', error);
+    } finally { setIsSending(false); }
   };
 
-  const handlePhotoCaptured = (uri: string) => {
-    setPhotoUri(uri);
-    setIsCameraVisible(false);
-  };
+  const handlePhotoCaptured = (uri: string) => { setPhotoUri(uri); setIsCameraVisible(false); };
 
   const handleConfirm = async () => {
-  if (isSending || !photoUri || !chatId || !message.trim()) return;
-
+    if (isSending || !photoUri || !chatId || !message.trim()) return;
     setIsSending(true);
-
     try {
       const idToken = await AsyncStorage.getItem('idToken');
       const userUid = await AsyncStorage.getItem('uid');
-
-      if (!idToken || !userUid) {
-        alert('Autenticação falhou.');
-        setIsSending(false);
-        return;
-      }
+      if (!idToken || !userUid) { alert('Autenticação falhou.'); setIsSending(false); return; }
 
       const formData = new FormData();
-      formData.append('file', {
-        uri: photoUri,
-        type: 'image/png',
-        name: 'foto.png',
-      } as any);
+      formData.append('file', { uri: photoUri, type: 'image/png', name: 'foto.png' } as any);
       formData.append('message', message.trim());
 
       setMessages((prev) => [...prev, {
-        id: `${Date.now()}`,
-        isFromUser: true,
-        type: 'text',
-        text: message.trim(),
-        timestamp: new Date().toISOString(),
-      }, {
-        id: 'typing-img',
-        isFromUser: false,
-        type: 'text',
-        text: 'Digitando...',
-        timestamp: new Date().toISOString(),
+        id: `${Date.now()}`, isFromUser: true, type: 'text',
+        text: message.trim(), timestamp: new Date().toISOString(), imageUrl: photoUri
       }]);
+      scrollToBottom();
 
-      await axiosService.post(
-        `/chats/${userUid}/message?chat=${chatId}&context=${contextEnabled}`,
-        formData,
-        {
-          headers: {
-            Authorization: `Bearer ${idToken}`,
-            'Content-Type': 'multipart/form-data',
-          },
-        }
+      await axiosService.post(`/chats/${userUid}/message?chat=${chatId}&context=${contextEnabled}`, formData,
+        { headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${idToken}` } }
       );
-
       setPhotoUri(null);
       setMessage('');
-
-      setTimeout(() => {
-        fetchMessages();
-      }, 2000);
-    } catch (error) {
-      console.error('Erro ao enviar foto:', error);
-      alert('Erro ao enviar a foto.');
-    } finally {
-      setIsSending(false);
-    }
+      setTimeout(() => fetchMessages(), 2000);
+    } catch (error) { console.error('Erro ao enviar foto:', error); alert('Erro ao enviar a foto.');
+    } finally { setIsSending(false); }
   };
 
-
-  const handleRetake = () => {
-    setPhotoUri(null);
-    setIsCameraVisible(true);
-  };
+  const handleRetake = () => { setPhotoUri(null); setIsCameraVisible(true); };
 
   const handleSelectImageFromGallery = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      alert('Permissão negada.');
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      quality: 1,
-    });
-    if (!result.canceled && result.assets?.[0]?.uri) {
-      handlePhotoCaptured(result.assets[0].uri);
-    }
+    if (status !== 'granted') { alert('Permissão negada.'); return; }
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, quality: 1 });
+    if (!result.canceled && result.assets?.[0]?.uri) { handlePhotoCaptured(result.assets[0].uri); }
   };
 
   const renderMessage = ({ item }: { item: ChatMessage }) => {
-  const isUser = item.isFromUser;
-
+    const isUser = item.isFromUser;
     return (
       <View style={[styles.messageContainer, isUser ? styles.rightAlign : styles.leftAlign]}>
         <Text style={styles.timestamp}>{new Date(item.timestamp).toLocaleString()}</Text>
-
         {item.type === 'text' && (item.text || item.imageUrl) && (
           <View style={[styles.bubble, isUser ? styles.userBubble : styles.botBubble]}>
-            {item.text ? (
-              <Text style={styles.bubbleText}>{item.text}</Text>
-            ) : null}
-
-            {item.imageUrl && (
-              <Image
-                source={{ uri: item.imageUrl }}
-                style={styles.imagePreview}
-                resizeMode="cover"
-              />
-            )}
+            {item.text ? <Text style={styles.bubbleText}>{item.text}</Text> : null}
+            {item.imageUrl && <Image source={{ uri: item.imageUrl }} style={styles.imagePreview} resizeMode="cover" />}
           </View>
         )}
-
         {item.type === 'diagnostico' && (
           <View style={[styles.bubble, styles.botBubble]}>
             {item.problema && <Text style={styles.boldWhite}>Problema: {item.problema}</Text>}
             {item.titulo && <Text style={styles.boldWhite}>Praga: {item.titulo}</Text>}
             {item.descricao && <Text style={styles.bubbleText}>Descrição: {item.descricao}</Text>}
-            {item.recomendacao && (
-              <Text style={styles.bubbleText}>Recomendação: {item.recomendacao}</Text>
-            )}
+            {item.recomendacao && <Text style={styles.bubbleText}>Recomendação: {item.recomendacao}</Text>}
           </View>
         )}
       </View>
     );
   };
+  
+  const renderEmptyListComponent = () => (
+    <View style={styles.emptyContainer}>
+      <Ionicons name="chatbubbles-outline" size={60} color="#ccc" />
+      <Text style={styles.emptyText}>
+        {error ? error : "Nenhuma mensagem aqui ainda.\nEnvie uma mensagem para começar!"}
+      </Text>
+    </View>
+  );
 
-  if (isCameraVisible) {
-    return <CameraCapture onPhotoCaptured={handlePhotoCaptured} onClose={() => setIsCameraVisible(false)} />;
+  if (loading && messages.length === 0 && !error) {
+    return (
+      <View style={styles.emptyContainer}>
+        <ActivityIndicator size="large" color="#028C48" />
+      </View>
+    );
   }
+
+  if (isCameraVisible) { return <CameraCapture onPhotoCaptured={handlePhotoCaptured} onClose={() => setIsCameraVisible(false)} />; }
 
   if (photoUri) {
     return (
       <ScrollView contentContainerStyle={styles.previewContainer}>
         <LogoCopagroUsers />
         <Image source={{ uri: photoUri }} style={styles.photoPreview} resizeMode="contain" />
-        <TextInput
-          placeholder="Detalhe o seu problema (obrigatório)"
-          value={message}
-          onChangeText={setMessage}
-          multiline
-          numberOfLines={3}
-          style={styles.messageInput}
-        />
+        <TextInput placeholder="Detalhe o seu problema (obrigatório)" value={message} onChangeText={setMessage} multiline numberOfLines={3} style={styles.messageInput} />
         <View style={styles.actions}>
-          <IconButton
-            icon={isSending ? 'loading' : 'check'}
-            onPress={handleConfirm}
-            size={36}
-            style={styles.confirm}
-            iconColor="#fff"
-            disabled={!message.trim() || isSending}
-          />
-
-          <IconButton 
-            icon="camera-retake"
-            onPress={handleRetake}
-            size={36}
-            style={styles.retake} 
-            iconColor="#fff"
-          />
+          <IconButton icon={isSending ? 'loading' : 'check'} onPress={handleConfirm} size={36} style={styles.confirm} iconColor="#fff" disabled={!message.trim() || isSending} />
+          <IconButton icon="camera-retake" onPress={handleRetake} size={36} style={styles.retake} iconColor="#fff" />
         </View>
       </ScrollView>
     );
   }
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <LogoCopagroUsers />
       <FlatList
+        ref={flatListRef}
         data={messages}
         renderItem={renderMessage}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.chatContent}
-        ListFooterComponent={
+        ListEmptyComponent={renderEmptyListComponent}
+        ListHeaderComponent={
           showLoadMore ? (
-            <TouchableOpacity
-              style={{ padding: 10, alignSelf: 'center' }}
-              onPress={() => setLimit((prev) => prev + 10)}
-            >
-              <Text style={{ color: '#028C48', fontWeight: 'bold' }}>Ver mais mensagens</Text>
+            <TouchableOpacity style={styles.loadMoreButton} onPress={() => setLimit((prev) => prev + 10)} disabled={loading}>
+              {loading ? <ActivityIndicator color="#028C48" /> : <Text style={styles.loadMoreText}>Ver mensagens anteriores</Text>}
             </TouchableOpacity>
           ) : null
         }
       />
       <View style={[styles.inputContainer]}>
-        <TextInput
-          value={input}
-          onChangeText={setInput}
-          placeholder="IAGRO pode cometer erros, utilize com cautela!"
-          style={styles.textInput}
-        />
+        <TextInput value={input} onChangeText={setInput} placeholder="IAGRO pode cometer erros, utilize com cautela!" style={styles.textInput} />
         <TouchableOpacity onPress={handleSend} disabled={isSending}>
           <Ionicons name="send" size={24} color={isSending ? '#aaa' : '#4CAF50'} />
         </TouchableOpacity>
       </View>
       <View style={styles.customBottomBar}>
-      <IconButton
-        icon="home"
-        iconColor="white"
-        size={30}
-        onPress={() => router.back()}
-      />
-      <IconButton
-        icon="camera"
-        iconColor="white"
-        size={30}
-        onPress={() => setIsCameraVisible(true)}
-      />
-      <IconButton
-        icon="folder"
-        iconColor="white"
-        size={30}
-        onPress={handleSelectImageFromGallery}
-      />
-    </View>
+        <IconButton icon="home" iconColor="white" size={30} onPress={() => router.back()} />
+        <IconButton icon="camera" iconColor="white" size={30} onPress={() => setIsCameraVisible(true)} />
+        <IconButton icon="folder" iconColor="white" size={30} onPress={handleSelectImageFromGallery} />
+      </View>
     </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F3F3F3', paddingBottom: 60 },
-  chatContent: { padding: 12, paddingTop: 80, paddingBottom: 10 },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#E0E0E0',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderColor: '#ccc',
-  },
-  textInput: {
-    flex: 1,
-    backgroundColor: 'white',
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    marginRight: 8,
-  },
+  container: { flex: 1, backgroundColor: '#F3F3F3' },
+  chatContent: { paddingHorizontal: 12, paddingBottom: 10, flexGrow: 1 },
+  loadMoreButton: { padding: 15, alignSelf: 'center' },
+  loadMoreText: { color: '#028C48', fontWeight: 'bold' },
+  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
+  emptyText: { marginTop: 16, fontSize: 16, color: '#aaa', textAlign: 'center' },
+  inputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#E0E0E0', paddingHorizontal: 16, paddingVertical: 8, borderTopWidth: 1, borderColor: '#ccc' },
+  textInput: { flex: 1, backgroundColor: 'white', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 8, marginRight: 8 },
   messageContainer: { marginVertical: 6 },
   rightAlign: { alignItems: 'flex-end' },
   leftAlign: { alignItems: 'flex-start' },
@@ -455,47 +315,14 @@ const styles = StyleSheet.create({
   bubbleText: { color: 'white', fontSize: 14 },
   boldWhite: { color: 'white', fontWeight: 'bold', fontSize: 14, marginBottom: 2 },
   timestamp: { fontSize: 10, color: 'gray', marginBottom: 2 },
-  customBottomBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 60,
-    backgroundColor: '#028C48',
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    elevation: 8,
-    zIndex: 10,
-  },
-
-  previewContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', width: '100%' },
+  customBottomBar: { backgroundColor: '#028C48', flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', elevation: 8, height: 60 },
+  previewContainer: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: 16 },
   photoPreview: { width: '100%', aspectRatio: 1, borderRadius: 12, backgroundColor: '#ccc' },
-  messageInput: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 10,
-    elevation: 2,
-    width: '90%',
-    marginTop: 20,
-  },
-  actions: {
-    flexDirection: 'row',
-    marginTop: 20,
-    position: 'absolute',
-    bottom: 40,
-    alignSelf: 'center',
-    zIndex: 1,
-  },
+  messageInput: { backgroundColor: 'white', borderRadius: 12, padding: 10, elevation: 2, width: '90%', marginTop: 20, minHeight: 80, textAlignVertical: 'top' },
+  actions: { flexDirection: 'row', marginTop: 20 },
   confirm: { backgroundColor: 'green', marginRight: 20 },
   retake: { backgroundColor: 'red' },
-  imagePreview: {
-  width: 200,
-  height: 200,
-  borderRadius: 8,
-  marginTop: 8,
-  backgroundColor: '#ccc',
-  },
+  imagePreview: { width: 200, height: 200, borderRadius: 8, marginTop: 8, backgroundColor: '#ccc' },
 });
 
 export default ChatScreen;
