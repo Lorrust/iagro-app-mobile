@@ -157,7 +157,7 @@ const HomeRoute: React.FC<HomeRouteProps> = ({
           />
         </View>
       )}
-      {!loadingChats && !errorChats && filteredChats.length > 0 && (
+      {!errorChats && filteredChats.length > 0 && (
         <ScrollView
           contentContainerStyle={styles.chatsListContainer}
           showsVerticalScrollIndicator={true}
@@ -214,16 +214,29 @@ const HomeRoute: React.FC<HomeRouteProps> = ({
               </Swipeable>
             </View>
           ))}
-          {hasMore && !loadingChats && (
-            <TouchableOpacity
-              onPress={loadMoreChats}
-              style={{ padding: 10, alignItems: "center" }}
-            >
-              <Text style={{ color: "#028C48", fontSize: 16 }}>
-                Ver mais conversas
-              </Text>
-            </TouchableOpacity>
-          )}
+
+          {/* ===== LÓGICA DE CARREGAMENTO "VER MAIS" CORRIGIDA ===== */}
+          {hasMore &&
+            (loadingChats ? (
+              // ===== ALTERAÇÃO AQUI =====
+              // Mostra o spinner E o texto de carregamento
+              <View style={{ paddingVertical: 20, alignItems: "center"}}>
+                <ActivityIndicator size="large" color="#028C48" />
+                <Text style={styles.loadingText}>
+                  Carregando mais conversas...
+                </Text>
+              </View>
+            ) : (
+              // Se não, mostra o botão para carregar mais
+              <TouchableOpacity
+                onPress={loadMoreChats}
+                style={{ padding: 10, alignItems: "center" }}
+              >
+                <Text style={{ color: "#028C48", fontSize: 16 }}>
+                  Ver mais conversas
+                </Text>
+              </TouchableOpacity>
+            ))}
         </ScrollView>
       )}
     </View>
@@ -425,6 +438,7 @@ const IntroScreen: React.FC = () => {
   const loadMoreChats = async (): Promise<void> => {
     if (!hasMore || loadingChats) return;
     setLoadingChats(true);
+    console.log("MUDOU O ESTADO? loadingChats agora é:", true); 
     setErrorChats(null);
     try {
       const userUid = await AsyncStorage.getItem("uid");
