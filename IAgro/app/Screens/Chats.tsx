@@ -64,7 +64,7 @@ const ChatScreen = () => {
 
       const effectiveLimit = overrideLimit ?? limit;
 
-      const response = await axiosService.get(`/chats/${chatId}/messages?limit=${effectiveLimit}`);
+      const response = await axiosService.get(`/chats/${chatId}/messages?limit=${effectiveLimit}&orderDirection=asc`, );
 
       const total = response.data.pagination?.totalSubDocs || 0;
       const rawMessages = response.data.messages || [];
@@ -105,7 +105,7 @@ const ChatScreen = () => {
               type: 'diagnostico',
               titulo: msg.title ?? msg.diagnosis?.problem,
               problema: msg.diagnosis?.problem,
-              descricao: msg.diagnosis?.description,
+              descricao: msg.diagnosis?.description ?? msg.content ?? '',
               recomendacao: msg.diagnosis?.recommendation,
               timestamp,
             };
@@ -157,55 +157,54 @@ const ChatScreen = () => {
   }, [chatId, limit]);
 
   const handleSend = async () => {
-    if (input.trim() === '' || !chatId || isSending) return;
+  if (input.trim() === '' || !chatId || isSending) return;
 
-    setIsSending(true);
-
-    const newMessage: ChatMessage = {
-      id: `${Date.now()}`,
-      isFromUser: true,
-      type: 'text',
-      text: input.trim(),
-      timestamp: new Date().toISOString(),
-    };
-
-    setMessages((prev) => [...prev, newMessage, {
-      id: 'typing',
-      isFromUser: false,
-      type: 'text',
-      text: 'Digitando...',
-      timestamp: new Date().toISOString(),
-    }]);
-    setInput('');
+  setIsSending(true);
 
     try {
       const idToken = await AsyncStorage.getItem('idToken');
       const userUid = await AsyncStorage.getItem('uid');
-
       if (!idToken || !userUid) {
         alert('Autenticação falhou.');
         return;
       }
 
-      await axiosService.post(
+      const userMessage: ChatMessage = {
+        id: `${Date.now()}-user`,
+        isFromUser: true,
+        type: 'text',
+        text: input.trim(),
+        timestamp: new Date().toISOString(),
+      };
+
+      setMessages((prev) => [...prev, userMessage]);
+      setInput('');
+
+      const response = await axiosService.post(
         `/chats/${userUid}/message?chat=${chatId}&context=${contextEnabled}`,
-        { message: newMessage.text },
-        {
-          headers: {
-            Authorization: `Bearer ${idToken}`,
-          },
-        }
+        { message: input.trim() },
+        { headers: { Authorization: `Bearer ${idToken}` } }
       );
 
-      // Aguarda e atualiza chat após envio
-      setTimeout(fetchMessages, 1200); 
+      const ia = response.data.iaResponse;
+
+      if (ia?.mensagem) {
+        const iaMessage: ChatMessage = {
+          id: `${Date.now()}-ia`,
+          isFromUser: false,
+          type: 'text',
+          text: ia.mensagem,
+          timestamp: new Date().toISOString(),
+        };
+
+        setMessages((prev) => [...prev, iaMessage]);
+      }
     } catch (error) {
       console.error('Erro ao enviar mensagem:', error);
     } finally {
       setIsSending(false);
     }
   };
-
 
   const handlePhotoCaptured = (uri: string) => {
     setPhotoUri(uri);
@@ -303,9 +302,12 @@ const ChatScreen = () => {
       <View style={[styles.messageContainer, isUser ? styles.rightAlign : styles.leftAlign]}>
         <Text style={styles.timestamp}>{new Date(item.timestamp).toLocaleString()}</Text>
 
-        {item.type === 'text' && (
+        {item.type === 'text' && (item.text || item.imageUrl) && (
           <View style={[styles.bubble, isUser ? styles.userBubble : styles.botBubble]}>
-            <Text style={styles.bubbleText}>{item.text}</Text>
+            {item.text ? (
+              <Text style={styles.bubbleText}>{item.text}</Text>
+            ) : null}
+
             {item.imageUrl && (
               <Image
                 source={{ uri: item.imageUrl }}
@@ -377,7 +379,6 @@ const ChatScreen = () => {
         renderItem={renderMessage}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.chatContent}
-        inverted
         ListFooterComponent={
           showLoadMore ? (
             <TouchableOpacity
@@ -426,7 +427,7 @@ const ChatScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F3F3F3', paddingBottom: 60 },
-  chatContent: { padding: 12, paddingBottom: 0, paddingTop: 60 },
+  chatContent: { padding: 12, paddingTop: 80, paddingBottom: 10 },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
