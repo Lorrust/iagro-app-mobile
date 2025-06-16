@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button } from 'react-native-paper';
+import { Button, IconButton } from 'react-native-paper';
 import { StyleSheet } from 'react-native';
 
 interface ButtonCopagroProps {
@@ -9,19 +9,30 @@ interface ButtonCopagroProps {
   disabled?: boolean;
 }
 
-export const ButtonCopagro: React.FC<ButtonCopagroProps> = ({ icon, onPress, label = '' }) => {
+export const ButtonCopagro: React.FC<ButtonCopagroProps> = ({ icon, onPress, label }) => {
+  
   return (
-    <Button
-      mode="contained"
-      icon={icon}
-      onPress={onPress}
-      contentStyle={styles.content}
-      labelStyle={styles.label}
-      style={styles.button}
-      buttonColor='#028C48' 
-    >
-      {label}
-    </Button>
+    <>
+      {label ? (
+        <Button
+          mode="contained"
+          onPress={onPress}
+          style={styles.button}
+          contentStyle={styles.content}
+          labelStyle={styles.label}
+          disabled={false}
+        >
+          {label}
+        </Button>
+      ) : (
+        <IconButton
+          mode="contained"
+          icon={icon ?? 'arrow-right'}
+          iconColor='#f5f5f5'
+          onPress={onPress}
+          style={styles.button} />
+      )}
+    </>
   );
 };
 
@@ -32,6 +43,7 @@ const styles = StyleSheet.create({
     borderRadius: 34,
     width: '60%',
     alignSelf: 'center', 
+    backgroundColor: '#028C48', // Green color
   },
   content: {
     flexDirection: 'row',

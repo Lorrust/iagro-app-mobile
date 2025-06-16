@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router'; // ou ajuste conforme seu roteamento
 
 const axiosInstance = axios.create({
-  baseURL: 'http://192.168.100.213:3000', // ajuste conforme seu back-end
+  baseURL: 'http://192.168.100.244:3000', // ajuste conforme seu back-end
   headers: {
     'Content-Type': 'application/json',
     'X-Requested-With': 'XMLHttpRequest',
@@ -17,7 +17,6 @@ axiosInstance.interceptors.response.use(
     if (error.response && (error.response.status === 401 || error.response.status === 400)) {
       // Remove dados do AsyncStorage
       await AsyncStorage.removeItem('user');
-      await AsyncStorage.removeItem('id-company');
 
       // Redireciona para tela de login
       router.replace('/Auth/LoginSys'); // use 'replace' para não voltar ao Home
@@ -27,34 +26,37 @@ axiosInstance.interceptors.response.use(
 );
 
 // Funções utilitárias
-const get = (url, params = {}) => {
-  return requisition(url, 'get', null, params);
+const get = (url, params = {}, config = {}) => {
+  return requisition(url, 'get', null, params, config);
 };
 
-const post = (url, data) => {
-  return requisition(url, 'post', data);
+const post = (url, data, config = {}) => {
+  return requisition(url, 'post', data, {}, config);
 };
 
-const put = (url, data) => {
-  return requisition(url, 'put', data);
+const put = (url, data, config = {}) => {
+  return requisition(url, 'put', data, {}, config);
 };
 
-const del = (url, data) => {
-  return requisition(url, 'delete', data);
+const del = (url, data, config = {}) => {
+  return requisition(url, 'delete', data, {}, config);
 };
+
 
 // Função principal para requisitar
-const requisition = async (url, method, data = null, params = {}) => {
-  // Obtém o token e id-company do AsyncStorage
+const requisition = async (url, method, data = null, params = {}, config = {}) => {
   const userData = await AsyncStorage.getItem('user');
   const user = userData ? JSON.parse(userData) : null;
   const token = user ? user.token : null;
+  const idToken = await AsyncStorage.getItem('idToken');
   const idCompany = await AsyncStorage.getItem('id-company');
 
   const headers = {
     ...(token && { token }),
     ...(idCompany && { 'id-company': idCompany }),
+    ...(idToken && { Authorization: `Bearer ${idToken}` }),
     "X-Requested-With": "XMLHttpRequest",
+    ...config.headers,
   };
 
   try {
@@ -64,6 +66,7 @@ const requisition = async (url, method, data = null, params = {}) => {
       data,
       headers,
       params,
+      ...config, // ← passa o restante do config também, como timeout, etc
     });
 
     return response.data;

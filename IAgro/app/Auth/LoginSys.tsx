@@ -9,6 +9,7 @@ import {
   Animated,
   Dimensions,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { router } from 'expo-router';
 import LogoCopagro from '../components/LogoCopagro';
@@ -16,9 +17,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import axiosService from '../../services/axiosService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios, { AxiosError } from 'axios';
-import {ButtonCopagro} from '../components/Button';
-import {TextInputCopagro} from '../components/ButtonTxt';
-
+import { ButtonCopagro } from '../components/Button';
+import TextInputCopagro from '../components/ButtonTxt';
 
 const screenHeight = Dimensions.get('window').height;
 
@@ -28,31 +28,68 @@ export default function SettingsScreen() {
   const [senha, setSenha] = useState('');
   const [loginPressed, setLoginPressed] = useState(false);
   const [loadingLogin, setLoadingLogin] = useState(false);
-  const [loginError, setLoginError] = useState('');
+  const [loginError, setLoginError] = useState(''); // Já existe para avisos de erro
 
   // Estados para a tela de Cadastro
   const [registerVisible, setRegisterVisible] = useState(false);
-  const [corporateName, setcorporateName] = useState('');
+  const [corporateName, setCorporateName] = useState('');
   const [fullName, setFullName] = useState('');
-  const [cpf, setCpf] = useState(''); 
+  const [cpf, setCpf] = useState('');
   const [registerEmail, setRegisterEmail] = useState('');
   const [registerPassword, setRegisterPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loadingRegister, setLoadingRegister] = useState(false);
   const [registerError, setRegisterError] = useState('');
+  const [cnpj, setCnpj] = useState('');
 
   // Variável de animação
   const translateY = useRef(new Animated.Value(0)).current;
 
+  const showErrorFromResponse = (
+    response: any,
+    setError: (msg: string) => void,
+    title: string
+  ) => {
+    const message = response?.data?.message || 'Erro inesperado.';
+    setError(message);
+    Alert.alert(title, message);
+  };
+
+  // Handler para corporateName field para alternar os campos CPF/CNPJ
+  const onCorporateNameChange = (text: string) => {
+    setCorporateName(text);
+    if (text === '') {
+      // Se Razão Social for limpa, limpa também qualquer valor de CNPJ e volta para o campo CPF
+      setCnpj('');
+    }
+  };
+
+  // Handler para o campo CNPJ com formatação automática
+  const onCnpjChange = (text: string) => {
+    // Permite apenas dígitos e limita a 14 dígitos
+    const numeric = text.replace(/\D/g, '').slice(0, 14);
+    // Formata a string numérica como CNPJ: 00.000.000/0000-00
+    let formatted = '';
+    if (numeric.length > 0) {
+      const part1 = numeric.slice(0, 2);
+      const part2 = numeric.slice(2, 5);
+      const part3 = numeric.slice(5, 8);
+      const part4 = numeric.slice(8, 12);
+      const part5 = numeric.slice(12, 14);
+      if (part1) formatted += part1;
+      if (part2) formatted += '.' + part2;
+      if (part3) formatted += '.' + part3;
+      if (part4) formatted += '/' + part4;
+      if (part5) formatted += '-' + part5;
+    }
+    setCnpj(formatted);
+  };
+
   // Função para formatar CPF (definida na tela, não no componente Input)
   const formatCpf = (text: string): string => {
-    // Remove all non-digit characters
     const cleanedText = text.replace(/\D/g, '');
-
-    // Limit to 11 digits
     const limitedDigits = cleanedText.substring(0, 11);
 
-    // Apply formatting: xxx.xxx.xxx-xx
     let formattedText = '';
     for (let i = 0; i < limitedDigits.length; i++) {
       formattedText += limitedDigits[i];
@@ -66,10 +103,10 @@ export default function SettingsScreen() {
     return formattedText;
   };
 
-   // Handler específico para o input do CPF
+  // Handler específico para o input do CPF
   const handleCpfChange = (newText: string) => {
     const formattedValue = formatCpf(newText);
-    setCpf(formattedValue); // Atualiza o estado com o valor formatado
+    setCpf(formattedValue);
   };
 
 
@@ -79,7 +116,32 @@ export default function SettingsScreen() {
       if (!loginPressed) return;
 
       setLoadingLogin(true);
-      setLoginError('');
+      setLoginError(''); // Limpa erros anteriores antes de tentar logar
+
+      // --- VALIDAÇÃO DE EMAIL E SENHA NO LADO DO CLIENTE (Adicionado/Ajustado) ---
+      if (!email || !senha) {
+        setLoginError('Por favor, preencha email e senha.');
+        setLoadingLogin(false);
+        setLoginPressed(false); // Resetar o estado do clique
+        return; // Interrompe a execução se campos vazios
+      }
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        setLoginError('Por favor, insira um email válido.');
+        setLoadingLogin(false);
+        setLoginPressed(false); // Resetar o estado do clique
+        return; // Interrompe a execução se email inválido
+      }
+
+      if (senha.length <= 8) {
+        setLoginError('A senha deve ter pelo menos 8 caracteres.');
+        setLoadingLogin(false);
+        setLoginPressed(false); // Resetar o estado do clique
+        return; // Interrompe a execução se senha inválida
+      }
+      // --- Fim da Validação ---
+
 
       try {
         const response = await axiosService.post('/auth/login', {
@@ -88,27 +150,40 @@ export default function SettingsScreen() {
         });
 
         console.log('Login realizado com sucesso!', response.data);
-        alert('Login realizado com sucesso!');
-
-        if (response.data && response.data.user) {
-          await AsyncStorage.setItem('user', JSON.stringify(response.data.user));
-        }
-        if (response.data && response.data.token) {
-          await AsyncStorage.setItem('token', response.data.token);
-        }
-
-        if (response.data?.user?.companyId) {
-          await AsyncStorage.setItem('id-company', response.data.user.companyId.toString());
-        } else if (response.data?.companyId) {
-          await AsyncStorage.setItem('id-company', response.data.companyId.toString());
+        // Remover o alert aqui se o sucesso for apenas navegação e feedback visual
+        // alert('Login realizado com sucesso!');
+        // Salva o UID em escopo global
+        let savedUid = null;
+        if (response.data.user?.uid) {
+          savedUid = response.data.user.uid.toString();
+        } else if (response.data.user?.id) {
+          savedUid = response.data.user.id.toString();
+        } else if (response.data.uid) {
+          savedUid = response.data.uid.toString();
         }
 
+        if (savedUid) {
+          await AsyncStorage.setItem('uid', savedUid);
+          console.log('User UID salvo com sucesso:', savedUid);
+        } else {
+          console.warn('User UID não encontrado. Usuário não logado?');
+        }
+        
+        if (response.data.idToken) {
+          await AsyncStorage.setItem('idToken', response.data.idToken);
+          console.log('idToken salvo com sucesso!');
+        } else {
+          console.warn('idToken não encontrado na resposta do login');
+        }
+
+        // Navega para Home
         router.push('/Screens/Home');
 
       } catch (error) {
-        console.error('Erro no login:', error);
+        console.log('Erro no login:', error);
+
         if (axios.isAxiosError(error)) {
-          console.error('Axios Error Details:', {
+          console.log('Axios Error Details:', {
             data: error.response?.data,
             status: error.response?.status,
             headers: error.response?.headers,
@@ -116,49 +191,66 @@ export default function SettingsScreen() {
           });
 
           if (error.response) {
-            const errorMessage = error.response.data?.message || 'Erro ao realizar login. Verifique suas credenciais.';
-            setLoginError(`Erro: ${errorMessage}`);
-            alert(`Erro ao realizar login: ${errorMessage}`);
+            const status =  error.response.status;
+
+            if (axios.isAxiosError(error) && error.response) {
+              showErrorFromResponse(error.response, setLoginError, 'Erro no Login');
+            }
           } else if (error.request) {
-            setLoginError('Erro de rede. Verifique sua conexão.');
-            alert('Erro de rede. Verifique sua conexão.');
+            const message = 'Erro de rede. Verifique sua conexão.';
+            setRegisterError(message);
+            Alert.alert('Erro de Rede', message);
           } else {
-            setLoginError(`Erro na requisição: ${error.message}`);
-            alert(`Erro na requisição: ${error.message}`);
+            const message = `Ocorreu um erro: ${error.message}`;
+            setRegisterError(message);
+            Alert.alert('Erro', message);
           }
         } else {
-          console.error('Unknown Error:', error);
-          setLoginError('Ocorreu um erro inesperado.');
-          alert('Ocorreu um erro inesperado.');
+          const message = 'Ocorreu um erro inesperado.';
+          console.log('Unknown Error:', error);
+          setRegisterError(message);
+          Alert.alert('Erro', message);
         }
-
       } finally {
         setLoadingLogin(false);
-        setLoginPressed(false);
+        setLoginPressed(false); // Garante que o estado é resetado mesmo em caso de erro
       }
     };
 
+    // Este efeito roda quando loginPressed, email ou senha mudam.
+    // loginPressed=true dispara a tentativa. Mudar email/senha enquanto loading=true
+    // não fará nada até que loading volte para false e o botão seja pressionado novamente.
     authenticate();
-  }, [loginPressed, email, senha]);
+  }, [loginPressed, email, senha]); // Dependências ajustadas
 
+
+  // Função para lidar com o Cadastro
   // Função para lidar com o Cadastro
   const handleRegister = async () => {
     setLoadingRegister(true);
     setRegisterError('');
 
-    // Para enviar para a API, limpe o CPF formatado
     const cleanedCpfForApi = cpf.replace(/\D/g, '');
+    const cleanedCnpjForApi = cnpj.replace(/\D/g, '');
 
-    // Validação: Use o CPF limpo para verificar se está completo
-    if (!corporateName || !fullName || !cleanedCpfForApi || !registerEmail || !registerPassword || !confirmPassword) {
-      setRegisterError('Por favor, preencha todos os campos.');
+    const isCpfFilled = cleanedCpfForApi.length === 11;
+    const isCorporateNameFilled = corporateName.length > 0;
+    const isCnpjFilled = cleanedCnpjForApi.length === 14;
+
+    if (!fullName || !registerEmail || !registerPassword || !confirmPassword) {
+      setRegisterError('Por favor, preencha nome completo, email e senhas.');
       setLoadingRegister(false);
       return;
     }
 
-    // Valida o tamanho dos dígitos limpos (deve ser 11 para um CPF válido)
-    if (cleanedCpfForApi.length !== 11) {
-      setRegisterError('CPF inválido. Use 11 números.');
+    if (!isCpfFilled && !isCorporateNameFilled) {
+      setRegisterError('Por favor, preencha o CPF (se pessoa física) ou a Razão Social (se pessoa jurídica).');
+      setLoadingRegister(false);
+      return;
+    }
+
+    if (isCorporateNameFilled && !isCnpjFilled) {
+      setRegisterError('Por favor, preencha o CNPJ.');
       setLoadingRegister(false);
       return;
     }
@@ -176,14 +268,21 @@ export default function SettingsScreen() {
       return;
     }
 
-    const registerData = {
-      corporateName: corporateName,
+    const registerData: any = { // Usamos 'any' aqui para flexibilidade
       fullName: fullName,
       email: registerEmail,
-      cpf: cleanedCpfForApi,
       password: registerPassword,
       confirmPassword: confirmPassword,
     };
+
+    if (isCorporateNameFilled && isCnpjFilled) {
+      registerData.corporateName = corporateName;
+      registerData.cnpj = cleanedCnpjForApi;
+      // Não enviamos CPF se a Razão Social/CNPJ foi preenchida
+    } else if (isCpfFilled) {
+      registerData.cpf = cleanedCpfForApi;
+      // Não enviamos CNPJ se o CPF foi preenchido
+    }
 
     console.log('Dados de cadastro a serem enviados:', registerData);
 
@@ -193,9 +292,10 @@ export default function SettingsScreen() {
       console.log('Usuário cadastrado com sucesso!', response.data);
       alert('Cadastro realizado com sucesso! Agora você pode fazer login.');
 
-      setcorporateName('');
+      setCorporateName('');
       setFullName('');
-      setCpf(''); 
+      setCpf('');
+      setCnpj('');
       setRegisterEmail('');
       setRegisterPassword('');
       setConfirmPassword('');
@@ -204,25 +304,24 @@ export default function SettingsScreen() {
       animateDown();
 
     } catch (error) {
-      console.error('Erro no cadastro:', error);
+      console.log('Erro no cadastro:', error);
       if (axios.isAxiosError(error)) {
-        console.error('Axios Error Details:', {
+        console.log('Axios Error Details:', {
           data: error.response?.data,
           status: error.response?.status,
           headers: error.response?.headers,
           message: error.message,
         });
 
-        if (error.response) {
-          const errorMessage = error.response.data?.message || 'Erro ao realizar cadastro.';
-          setRegisterError(`Erro: ${errorMessage}`);
+        if (axios.isAxiosError(error) && error.response) {
+          showErrorFromResponse(error.response, setRegisterError, 'Erro no Cadastro');
         } else if (error.request) {
           setRegisterError('Erro de rede. Verifique sua conexão.');
         } else {
-          setRegisterError(`Erro na requisição: ${error.message}`);
+          setRegisterError(`Ocorreu um erro: ${error.message}`);
         }
       } else {
-        console.error('Unknown Error:', error);
+        console.log('Unknown Error:', error);
         setRegisterError('Ocorreu um erro inesperado.');
       }
     } finally {
@@ -233,13 +332,17 @@ export default function SettingsScreen() {
 
   // Animação para subir (mostrar cadastro)
   const animateUp = () => {
-    setRegisterError('');
-    setcorporateName('');
+    setRegisterError(''); 
+    setCorporateName('');
     setFullName('');
-    setCpf(''); // Limpa o CPF ao abrir o cadastro
+    setCpf('');
     setRegisterEmail('');
     setRegisterPassword('');
     setConfirmPassword('');
+    setLoginError('');
+    setEmail('');
+    setSenha('');
+
 
     setRegisterVisible(true);
     Animated.timing(translateY, {
@@ -252,12 +355,16 @@ export default function SettingsScreen() {
   // Animação para descer (voltar para login)
   const animateDown = () => {
     setRegisterError('');
-    setcorporateName('');
+    setCorporateName('');
     setFullName('');
-    setCpf(''); // Limpa o CPF ao voltar para o login
+    setCpf('');
     setRegisterEmail('');
     setRegisterPassword('');
     setConfirmPassword('');
+    // Limpa erros de login também ao voltar
+    setLoginError('');
+    setEmail('');
+    setSenha('');
 
     Animated.timing(translateY, {
       toValue: 0,
@@ -280,8 +387,8 @@ export default function SettingsScreen() {
 
           {/* Usando TextInputCopagro para o Email de Login */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Email:</Text>
             <TextInputCopagro
+              label={"Email"}
               placeholder="Email"
               value={email}
               onChangeText={setEmail}
@@ -293,8 +400,8 @@ export default function SettingsScreen() {
 
           {/* Usando TextInputCopagro para a Senha de Login */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Senha:</Text>
             <TextInputCopagro
+              label={"Senha"}
               placeholder="Senha"
               value={senha}
               onChangeText={setSenha}
@@ -303,6 +410,7 @@ export default function SettingsScreen() {
             />
           </View>
 
+          {/* Exibe o aviso de erro de login */}
           {loginError ? <Text style={styles.errorText}>{loginError}</Text> : null}
 
           <TouchableOpacity onPress={() => router.push('/Auth/ForgotPsswrd')}>
@@ -314,6 +422,7 @@ export default function SettingsScreen() {
             label={loadingLogin ? 'Entrando...' : 'Entrar'}
             disabled={loadingLogin}
           />
+          {/* Indicador de carregamento do login */}
           {loadingLogin && <ActivityIndicator size="small" color="#028C48" style={{ marginTop: 10 }} />}
         </View>
 
@@ -340,21 +449,51 @@ export default function SettingsScreen() {
             <Text style={styles.title}>Cadastro</Text>
             <Text style={styles.subtitle}>Conte-nos um pouco sobre você...</Text>
 
-             {/* Usando TextInputCopagro para Razão Social */}
+            {/* Usando TextInputCopagro para Razão Social */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Razão social:</Text>
               <TextInputCopagro
+                label={"Razão social - Necessário para CNPJ"}
                 placeholder="Razão social"
                 value={corporateName}
-                onChangeText={setcorporateName}
+                onChangeText={onCorporateNameChange}
                 editable={!loadingRegister}
               />
             </View>
 
+            {corporateName.length > 0 ? (
+              // Se Razão Social estiver preenchida, mostra o campo CNPJ e a nota
+              <>
+                <View style={styles.inputGroup}>
+                  <TextInputCopagro
+                    label="CNPJ"
+                    placeholder="00.000.000/0000-00"
+                    value={cnpj}
+                    onChangeText={onCnpjChange}
+                    maxLength={18} // 14 dígitos + 4 caracteres de formatação = 18
+                    keyboardType="number-pad"
+                    editable={!loadingRegister}
+                  />
+                </View>
+              </>
+            ) : (
+              // Se Razão Social estiver vazia, mostra o campo CPF
+              <View style={styles.inputGroup}>
+                <TextInputCopagro
+                  label="CPF"
+                  placeholder="000.000.000-00"
+                  value={cpf}
+                  onChangeText={handleCpfChange} // CPF usa o handler com formatação
+                  maxLength={14}
+                  keyboardType="number-pad"
+                  editable={!loadingRegister}
+                />
+              </View>
+            )}
+
             {/* Usando TextInputCopagro para Nome completo */}
-             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Nome completo:</Text>
+            <View style={styles.inputGroup}>
               <TextInputCopagro
+                label={"Nome completo"}
                 placeholder="Nome completo"
                 value={fullName}
                 onChangeText={setFullName}
@@ -362,25 +501,10 @@ export default function SettingsScreen() {
               />
             </View>
 
-
-            {/* Usando TextInputCopagro para o CPF com formatação automática (agora feita aqui) */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>CPF:</Text>
-              <TextInputCopagro
-                placeholder="000.000.000-00" // Placeholder mais descritivo
-                value={cpf} // O estado `cpf` guarda o valor FORMATADO
-                onChangeText={handleCpfChange} // <-- Usando o handler local
-                keyboardType="number-pad" // <-- Definido aqui (melhor para CPF/telefone)
-                maxLength={14} // <-- Definido aqui (11 dígitos + 3 formatadores)
-                editable={!loadingRegister}
-                // Não precisamos de 'isCPF' no componente TextInputCopagro
-              />
-            </View>
-
             {/* Usando TextInputCopagro para Email de Cadastro */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Email:</Text>
               <TextInputCopagro
+                label={"Email"}
                 placeholder="Email"
                 value={registerEmail}
                 onChangeText={setRegisterEmail}
@@ -392,9 +516,9 @@ export default function SettingsScreen() {
 
             {/* Usando TextInputCopagro para Senha de Cadastro */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Senha:</Text>
               <TextInputCopagro
-                placeholder="Senha"
+                label={"Senha"}
+                placeholder="A senha deve ter pelo menos 8 caracteres"
                 value={registerPassword}
                 onChangeText={setRegisterPassword}
                 secureTextEntry
@@ -404,9 +528,9 @@ export default function SettingsScreen() {
 
             {/* Usando TextInputCopagro para Confirmar Senha */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Confirmar senha:</Text>
               <TextInputCopagro
-                placeholder="Confirmar senha"
+                label={"Confirmar senha"}
+                placeholder="Digite novamente a senha"
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 secureTextEntry
@@ -414,6 +538,7 @@ export default function SettingsScreen() {
               />
             </View>
 
+            {/* Exibe o aviso de erro de cadastro */}
             {registerError ? <Text style={styles.errorText}>{registerError}</Text> : null}
 
             <ButtonCopagro
@@ -421,6 +546,7 @@ export default function SettingsScreen() {
               label={loadingRegister ? 'Cadastrando...' : 'Concluir cadastro'}
               disabled={loadingRegister}
             />
+            {/* Indicador de carregamento do cadastro */}
             {loadingRegister && <ActivityIndicator size="small" color="#028C48" style={{ marginTop: 10 }} />}
 
             <TouchableOpacity onPress={animateDown} disabled={loadingRegister}>
@@ -475,13 +601,7 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 350,
     marginBottom: 10,
-  },
-  label: {
-    marginTop: 8,
-    marginBottom: 4,
-    fontWeight: '600',
-    fontSize: 14,
-    color: '#333',
+    paddingVertical: 5,
   },
   errorText: {
     color: 'red',
