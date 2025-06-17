@@ -22,7 +22,7 @@ interface User {
 
 const UserProfileScreen = () => {
   const theme = useTheme();
-
+  let userUid;
   const [user, setUser] = useState<User>({
     fullName: "",
     corporateName: "",
@@ -125,7 +125,8 @@ const UserProfileScreen = () => {
     }
   };
 
-  const handleDeleteAccount = () => {
+  const handleDeleteAccount = async () => {
+    const userUid = await AsyncStorage.getItem("uid");
     Alert.alert(
       "Excluir Conta",
       "Tem certeza de que deseja excluir sua conta? Esta ação é irreversível.",
@@ -134,7 +135,7 @@ const UserProfileScreen = () => {
         {
           text: "Excluir",
           style: "destructive",
-          onPress: () => console.log("Conta excluída"),
+          onPress: () => axiosService.del(`/users/${userUid}`),
         },
       ]
     );
