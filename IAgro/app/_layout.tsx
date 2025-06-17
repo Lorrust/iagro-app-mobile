@@ -10,6 +10,7 @@ export default function Layout() {
         <Stack.Screen name="Auth/ForgotPsswrd" options={{ title: "Modificar Senha" }} />
         <Stack.Screen name="Screens/Home" options={{ headerShown: false }} />
         <Stack.Screen name="Screens/Chats" options={{ title: "Voltar" }} />
+        <Stack.Screen name="Screens/UserProfile" options={{ title: "Perfil de Usuário" }} />
       </Stack>
     </GestureHandlerRootView>
   );

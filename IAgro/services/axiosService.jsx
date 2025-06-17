@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router'; // ou ajuste conforme seu roteamento
 
 const axiosInstance = axios.create({
-  baseURL: 'http://192.168.100.244:3000', // ajuste conforme seu back-end
+  baseURL: 'http://192.168.3.12:3000', // ajuste conforme seu back-end
   headers: {
     'Content-Type': 'application/json',
     'X-Requested-With': 'XMLHttpRequest',
@@ -45,15 +45,15 @@ const del = (url, data, config = {}) => {
 
 // Função principal para requisitar
 const requisition = async (url, method, data = null, params = {}, config = {}) => {
-  const userData = await AsyncStorage.getItem('user');
-  const user = userData ? JSON.parse(userData) : null;
-  const token = user ? user.token : null;
+  // const userData = await AsyncStorage.getItem('user');
+  // const user = userData ? JSON.parse(userData) : null;
+  // const token = user ? user.token : null;
   const idToken = await AsyncStorage.getItem('idToken');
-  const idCompany = await AsyncStorage.getItem('id-company');
+  // const idCompany = await AsyncStorage.getItem('id-company');
 
   const headers = {
-    ...(token && { token }),
-    ...(idCompany && { 'id-company': idCompany }),
+    // ...(token && { token }),
+    // ...(idCompany && { 'id-company': idCompany }),
     ...(idToken && { Authorization: `Bearer ${idToken}` }),
     "X-Requested-With": "XMLHttpRequest",
     ...config.headers,

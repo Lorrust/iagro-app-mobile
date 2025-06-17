@@ -18,7 +18,6 @@ import {
   BottomNavigation,
   useTheme,
   Searchbar,
-  // Theme,
 } from "react-native-paper";
 import { Swipeable, RectButton } from "react-native-gesture-handler";
 import AnimatedReanimated, {
@@ -28,16 +27,18 @@ import AnimatedReanimated, {
   withSequence,
   withDelay,
   Easing,
-  SharedValue, // Importado para tipagem
+  SharedValue,
+  interpolate,
 } from "react-native-reanimated";
 
-// Componentes e Serviços (sem alterações)
+// Componentes e Serviços
 import LogoCopagroUsers from "../components/LogoCopagroUsers";
 import CameraCapture from "../components/CreateCapture";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axiosService from "../../services/axiosService";
 import { router } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
+import { BlurView } from "expo-blur";
 
 // ================================================================= //
 // INTERFACES E TIPOS
@@ -47,10 +48,7 @@ interface ChatData {
   id: string;
   title: string;
   userUid: string;
-  timestamp: {
-    _seconds: number;
-    _nanoseconds: number;
-  };
+  timestamp: { _seconds: number; _nanoseconds: number };
   lastDiagnosis?: {
     category?: string;
     problem?: string;
@@ -59,7 +57,6 @@ interface ChatData {
   };
 }
 
-// Props para o componente HomeRoute
 interface HomeRouteProps {
   searchQuery: string;
   setSearchQuery: React.Dispatch<React.SetStateAction<string>>;
@@ -70,6 +67,7 @@ interface HomeRouteProps {
   hasMore: boolean;
   loadMoreChats: () => Promise<void>;
   handleCardPress: (chatId: string) => void;
+  handleAccountPress: () => void;
   swipeableRef: React.RefObject<Swipeable>;
   animatedHintContainerStyle: { opacity: number };
   animatedCardStyle: { transform: { translateX: number }[] };
@@ -83,9 +81,12 @@ interface HomeRouteProps {
   chats: ChatData[] | null;
   photoUri: string | null;
   showBottomNavigation: boolean;
+  plusPressed: boolean;
+  setPlusPressed: React.Dispatch<React.SetStateAction<boolean>>;
+  animatedCircle1Style: ViewStyle;
+  animatedCircle2Style: ViewStyle;
 }
 
-// Props para o componente CameraRoute
 interface CameraRouteProps {
   onPhotoCaptured: (uri: string) => void;
   onClose: () => void;
@@ -96,6 +97,10 @@ interface CameraRouteProps {
 // ================================================================= //
 
 const HomeRoute: React.FC<HomeRouteProps> = ({
+  plusPressed,
+  setPlusPressed,
+  animatedCircle1Style,
+  animatedCircle2Style,
   searchQuery,
   setSearchQuery,
   loadingChats,
@@ -105,6 +110,7 @@ const HomeRoute: React.FC<HomeRouteProps> = ({
   hasMore,
   loadMoreChats,
   handleCardPress,
+  handleAccountPress,
   swipeableRef,
   animatedHintContainerStyle,
   animatedCardStyle,
@@ -116,6 +122,34 @@ const HomeRoute: React.FC<HomeRouteProps> = ({
   showBottomNavigation,
 }) => (
   <View style={styles.container}>
+    {plusPressed && (
+      <BlurView intensity={100} tint="light" style={styles.plusContainer}>
+         <View style={styles.animatedCirclesContainer}>
+    <AnimatedReanimated.View style={[styles.animatedCircle, animatedCircle1Style]}>
+      <IconButton
+        icon="account"
+        iconColor="#FFFFFF"
+        size={30}
+        onPress={handleAccountPress}
+      />
+    </AnimatedReanimated.View>
+    <AnimatedReanimated.View style={[styles.animatedCircle, animatedCircle2Style]}>
+      <IconButton
+        icon="theme-light-dark"
+        iconColor="#FFFFFF"
+        size={30}
+      />
+    </AnimatedReanimated.View>
+
+  </View>
+
+        <TouchableOpacity
+          style={[StyleSheet.absoluteFill, { zIndex: 15 }]}
+          // onPress={() => setPlusPressed(false)}
+          activeOpacity={0}
+        />
+      </BlurView>
+    )}
     <LogoCopagroUsers />
     <View style={{ flex: 1, width: "100%" }}>
       <Searchbar
@@ -125,7 +159,6 @@ const HomeRoute: React.FC<HomeRouteProps> = ({
         onChangeText={setSearchQuery}
         style={styles.searchInput}
       />
-      {/* O resto do JSX continua o mesmo */}
       {loadingChats && filteredChats.length === 0 && (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#028C48" />
@@ -214,20 +247,15 @@ const HomeRoute: React.FC<HomeRouteProps> = ({
               </Swipeable>
             </View>
           ))}
-
-          {/* ===== LÓGICA DE CARREGAMENTO "VER MAIS" CORRIGIDA ===== */}
           {hasMore &&
             (loadingChats ? (
-              // ===== ALTERAÇÃO AQUI =====
-              // Mostra o spinner E o texto de carregamento
-              <View style={{ paddingVertical: 20, alignItems: "center"}}>
+              <View style={{ paddingVertical: 20, alignItems: "center" }}>
                 <ActivityIndicator size="large" color="#028C48" />
                 <Text style={styles.loadingText}>
                   Carregando mais conversas...
                 </Text>
               </View>
             ) : (
-              // Se não, mostra o botão para carregar mais
               <TouchableOpacity
                 onPress={loadMoreChats}
                 style={{ padding: 10, alignItems: "center" }}
@@ -272,7 +300,6 @@ const IntroScreen: React.FC = () => {
     colors: { ...theme.colors, secondaryContainer: "#01572b" },
   };
 
-  // --- ESTADOS TIPADOS ---
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [chats, setChats] = useState<ChatData[] | null>(null);
   const [loadingChats, setLoadingChats] = useState<boolean>(true);
@@ -286,8 +313,7 @@ const IntroScreen: React.FC = () => {
   const swipeableRef = useRef<Swipeable>(null);
   const [hasAnimatedHint, setHasAnimatedHint] = useState<boolean>(false);
   const [isSending, setIsSending] = useState<boolean>(false);
-
-  // --- CONFIGURAÇÃO DA BOTTOM NAVIGATION TIPADA ---
+  const [plusPressed, setPlusPressed] = useState<boolean>(false);
   const [navigationIndex, setNavigationIndex] = useState<number>(0);
   const [routes] = useState<
     { key: string; title: string; focusedIcon: string; unfocusedIcon: string }[]
@@ -310,11 +336,51 @@ const IntroScreen: React.FC = () => {
       focusedIcon: "folder",
       unfocusedIcon: "folder-outline",
     },
+    {
+      key: "plus",
+      title: "Mais",
+      focusedIcon: "plus",
+      unfocusedIcon: "plus",
+    },
   ]);
 
-  // --- ANIMAÇÃO COM SHARED VALUES TIPADOS ---
+  // --- ANIMAÇÕES ---
   const hintTranslateX = useSharedValue<number>(0);
   const hintOpacity = useSharedValue<number>(0);
+  const plusIconRotation = useSharedValue(0);
+  const circlesAnimation = useSharedValue(0);
+
+  useEffect(() => {
+    const config = { duration: 400, easing: Easing.bezier(0.34, 1.56, 0.64, 1) };
+    if (plusPressed) {
+      plusIconRotation.value = withTiming(180, config);
+      circlesAnimation.value = withTiming(1, config);
+    } else {
+      plusIconRotation.value = withTiming(0, config);
+      circlesAnimation.value = withTiming(0, { duration: 250 });
+    }
+  }, [plusPressed]);
+
+  const animatedPlusIconStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${plusIconRotation.value}deg` }],
+  }));
+
+   const animatedCircle1Style = useAnimatedStyle(() => ({
+    opacity: circlesAnimation.value,
+    transform: [
+      { scale: circlesAnimation.value },
+      // Move o primeiro ícone para cima
+      { translateY: interpolate(circlesAnimation.value, [0, 1], [0, -80]) },
+    ],
+  }));
+
+  const animatedCircle2Style = useAnimatedStyle(() => ({
+    opacity: circlesAnimation.value,
+    transform: [
+      { scale: circlesAnimation.value },
+      { translateY: interpolate(circlesAnimation.value, [0, 1], [0, -160]) },
+    ],
+  }));
 
   const animatedCardStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: hintTranslateX.value }],
@@ -324,7 +390,6 @@ const IntroScreen: React.FC = () => {
     opacity: hintOpacity.value,
   }));
 
-  // Lógica de animação (sem alteração)
   useEffect(() => {
     if (!loadingChats && chats && chats.length > 0 && !hasAnimatedHint) {
       setHasAnimatedHint(true);
@@ -351,7 +416,7 @@ const IntroScreen: React.FC = () => {
     }
   }, [chats, loadingChats, hasAnimatedHint]);
 
-  // --- FUNÇÕES COM PARÂMETROS TIPADOS ---
+  // --- FUNÇÕES ---
   const renderRightActions = (
     progress: any,
     dragX: any,
@@ -438,7 +503,6 @@ const IntroScreen: React.FC = () => {
   const loadMoreChats = async (): Promise<void> => {
     if (!hasMore || loadingChats) return;
     setLoadingChats(true);
-    console.log("MUDOU O ESTADO? loadingChats agora é:", true); 
     setErrorChats(null);
     try {
       const userUid = await AsyncStorage.getItem("uid");
@@ -531,15 +595,26 @@ const IntroScreen: React.FC = () => {
     router.push(`/Screens/Chats?chatId=${chatId}`);
   };
 
+  const handleAccountPress = (): void => {
+    setPlusPressed(false); 
+    console.log("Abrindo perfil do usuário");
+    router.push("/Screens/UserProfile");
+  }
+
   const handleIndexChange = (index: number): void => {
     if (index === 2) {
       handleOpenGalleryDirect();
-    } else {
-      setNavigationIndex(index);
+      return;
     }
+    if (index === 3) {
+      setPlusPressed((prev) => !prev);
+      return;
+    }
+
+    setPlusPressed(false);
+    setNavigationIndex(index);
   };
 
-  // --- LÓGICA DE RENDERIZAÇÃO TIPADA ---
   const renderScene = ({
     route,
   }: {
@@ -549,24 +624,31 @@ const IntroScreen: React.FC = () => {
       case "home":
         return (
           <HomeRoute
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-            loadingChats={loadingChats}
-            errorChats={errorChats}
-            fetchUserChats={fetchUserChats}
-            filteredChats={filteredChats}
-            hasMore={hasMore}
-            loadMoreChats={loadMoreChats}
-            handleCardPress={handleCardPress}
-            swipeableRef={swipeableRef}
-            animatedHintContainerStyle={animatedHintContainerStyle}
-            animatedCardStyle={animatedCardStyle}
-            hintOpacity={hintOpacity}
-            renderRightActions={renderRightActions}
-            setNavigationIndex={setNavigationIndex}
-            chats={chats}
-            photoUri={photoUri}
-            showBottomNavigation={showBottomNavigation}
+            {...{
+              searchQuery,
+              setSearchQuery,
+              loadingChats,
+              errorChats,
+              fetchUserChats,
+              filteredChats,
+              hasMore,
+              loadMoreChats,
+              handleCardPress,
+              handleAccountPress,
+              swipeableRef,
+              animatedHintContainerStyle,
+              animatedCardStyle,
+              hintOpacity,
+              renderRightActions,
+              setNavigationIndex,
+              chats,
+              photoUri,
+              showBottomNavigation,
+              plusPressed,
+              setPlusPressed,
+              animatedCircle1Style,
+              animatedCircle2Style,
+            }}
           />
         );
       case "camera":
@@ -581,7 +663,37 @@ const IntroScreen: React.FC = () => {
     }
   };
 
-  // --- RENDERIZAÇÃO PRINCIPAL (LÓGICA INALTERADA) ---
+   const renderAnimatedIcon = ({
+    route,
+    focused,
+    color,
+  }: {
+    route: { key: string; focusedIcon: string; unfocusedIcon: string };
+    focused: boolean;
+    color: string;
+  }) => {
+    // Define o nome do ícone (para ícones normais)
+    const iconName = focused ? route.focusedIcon : route.unfocusedIcon;
+
+    // O componente do ícone em si
+    const icon = <IconButton icon={iconName} size={30} iconColor={color} />;
+
+    // Para o ícone 'plus', usamos um nome fixo
+    const plusIcon = <IconButton icon="plus" size={30} iconColor={color} />;
+
+    return (
+      <View style={styles.iconContainer}>
+        {route.key === "plus" ? (
+          <AnimatedReanimated.View style={animatedPlusIconStyle}>
+            {plusIcon}
+          </AnimatedReanimated.View>
+        ) : (
+          icon
+        )}
+      </View>
+    );
+  };
+
   if (photoUri) {
     return (
       <ScrollView contentContainerStyle={styles.previewContainer}>
@@ -628,6 +740,7 @@ const IntroScreen: React.FC = () => {
       navigationState={{ index: navigationIndex, routes }}
       onIndexChange={handleIndexChange}
       renderScene={renderScene}
+      renderIcon={renderAnimatedIcon}
       barStyle={[
         styles.bottomNavigation,
         { display: showBottomNavigation ? "flex" : "none" },
@@ -639,10 +752,42 @@ const IntroScreen: React.FC = () => {
   );
 };
 
-// Estilos (sem alteração)
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F3F3F3", paddingTop: 60 },
-  loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
+  plusContainer: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 10,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  animatedCirclesContainer: {
+    position: 'absolute',
+    bottom: 0, // Posição acima da barra de navegação
+    right: 45,   // Posição horizontal alinhada com o botão "+"
+    alignItems: 'center',
+    zIndex: 20,
+  },
+  animatedCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28, // Deixa o fundo do ícone redondo
+    backgroundColor: '#028C48', // Fundo verde para o ícone
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'absolute', // Permite que a animação controle a posição
+    marginBottom: 15, // Espaçamento entre os botões
+  },
+   iconContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   chatItemContainer: {
     marginVertical: 10,
     marginHorizontal: 10,
