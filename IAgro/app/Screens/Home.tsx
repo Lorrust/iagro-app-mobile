@@ -129,7 +129,7 @@ const HomeRoute: React.FC<HomeRouteProps> = ({
       <IconButton
         icon="account"
         iconColor="#FFFFFF"
-        size={28}
+        size={30}
         onPress={handleAccountPress}
       />
     </AnimatedReanimated.View>
@@ -137,7 +137,7 @@ const HomeRoute: React.FC<HomeRouteProps> = ({
       <IconButton
         icon="theme-light-dark"
         iconColor="#FFFFFF"
-        size={28}
+        size={30}
       />
     </AnimatedReanimated.View>
 

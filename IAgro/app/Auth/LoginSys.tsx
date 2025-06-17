@@ -171,6 +171,7 @@ export default function SettingsScreen() {
         
         if (response.data.idToken) {
           await AsyncStorage.setItem('idToken', response.data.idToken);
+          await AsyncStorage.setItem('user', response.data.user ? JSON.stringify(response.data.user) : '');
           console.log('idToken salvo com sucesso!');
         } else {
           console.warn('idToken não encontrado na resposta do login');
