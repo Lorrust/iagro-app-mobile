@@ -1,16 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { StyleSheet, Alert, ScrollView, Image } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import {
-  Button,
-  Divider,
-  Subheading,
-  useTheme,
-} from "react-native-paper";
-import TextInputCopagro from '../components/ButtonTxt';
-import AsyncStorage from '@react-native-async-storage/async-storage'
+import { Button, Divider, Subheading, useTheme } from "react-native-paper";
+import TextInputCopagro from "../components/ButtonTxt";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaskedInputCopagro from "../components/MaskedInputCopagro";
 import axiosService from "@/services/axiosService";
+import { router } from "expo-router";
 
 // Interface do usuário
 interface User {
@@ -37,17 +33,17 @@ const UserProfileScreen = () => {
     document: "",
   });
 
-  const [originalCpf, setOriginalCpf] = useState<string>('');
-  const [originalCnpj, setOriginalCnpj] = useState<string>('');
+  const [originalCpf, setOriginalCpf] = useState<string>("");
+  const [originalCnpj, setOriginalCnpj] = useState<string>("");
 
   useEffect(() => {
     const fetchUserData = async () => {
-      const userString = await AsyncStorage.getItem('user');
+      const userString = await AsyncStorage.getItem("user");
       if (userString) {
         const userData = JSON.parse(userString);
-        
-        setOriginalCpf(userData.cpf || '');
-        setOriginalCnpj(userData.cnpj || '');
+
+        setOriginalCpf(userData.cpf || "");
+        setOriginalCnpj(userData.cnpj || "");
 
         const currentUserData = {
           fullName: userData.fullName,
@@ -72,7 +68,7 @@ const UserProfileScreen = () => {
   const handleSaveChanges = async () => {
     try {
       const payload: { [key: string]: any } = {};
-      
+
       if (user.fullName !== originalUser.fullName) {
         payload.fullName = user.fullName;
       }
@@ -82,10 +78,10 @@ const UserProfileScreen = () => {
       if (user.email !== originalUser.email) {
         payload.email = user.email;
       }
-      
+
       const userUid = await AsyncStorage.getItem("uid");
 
-      if (Object.keys(payload).length === 0) { 
+      if (Object.keys(payload).length === 0) {
         Alert.alert("Nenhuma alteração", "Não há dados para salvar.");
         return;
       }
@@ -108,20 +104,26 @@ const UserProfileScreen = () => {
         if (user.corporateName !== originalUser.corporateName) {
           if ((user.corporateName ?? "").length === 0) {
             updatedUserForStorage.cpf = user.document;
-            updatedUserForStorage.cnpj = '';
+            updatedUserForStorage.cnpj = "";
           } else {
             updatedUserForStorage.cnpj = user.document;
-            updatedUserForStorage.cpf = '';
+            updatedUserForStorage.cpf = "";
           }
         }
-        
-        await AsyncStorage.setItem("user", JSON.stringify(updatedUserForStorage));
+
+        await AsyncStorage.setItem(
+          "user",
+          JSON.stringify(updatedUserForStorage)
+        );
         Alert.alert("Sucesso", "Seus dados foram atualizados com sucesso.");
         setOriginalUser(user);
       }
     } catch (error) {
       console.error("Erro ao salvar os dados:", error);
-      Alert.alert("Erro", "Ocorreu um erro ao atualizar seus dados. Tente novamente.");
+      Alert.alert(
+        "Erro",
+        "Ocorreu um erro ao atualizar seus dados. Tente novamente."
+      );
     }
   };
 
@@ -135,7 +137,26 @@ const UserProfileScreen = () => {
         {
           text: "Excluir",
           style: "destructive",
-          onPress: () => axiosService.del(`/users/${userUid}`),
+          onPress: async () => {
+            try {
+              const idToken = await AsyncStorage.getItem("idToken");
+              await axiosService.del(`/users/${userUid}`, {
+                headers: {
+                  Authorization: `Bearer ${idToken}`,
+                },
+              });
+
+              await AsyncStorage.multiRemove(["user", "uid", "idToken"]);
+
+              router.replace("/Auth/LoginSys");
+            } catch (error) {
+              console.error("Erro ao excluir conta:", error);
+              Alert.alert(
+                "Erro",
+                "Não foi possível excluir a conta. Tente novamente."
+              );
+            }
+          },
         },
       ]
     );
