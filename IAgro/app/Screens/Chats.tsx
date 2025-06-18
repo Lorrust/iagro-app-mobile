@@ -282,16 +282,19 @@ const ChatScreen = () => {
           ) : null
         }
       />
-      <View style={[styles.inputContainer]}>
-        <TextInput value={input} onChangeText={setInput} placeholder="IAGRO pode cometer erros, utilize com cautela!" style={styles.textInput} />
+      <View style={styles.inputContainer}>
+        <TouchableOpacity onPress={() => setIsCameraVisible(true)} style={styles.iconButton}>
+          <Ionicons name="camera" size={24} color="#4CAF50" />
+        </TouchableOpacity>
+        <TextInput
+          value={input}
+          onChangeText={setInput}
+          placeholder="IAGRO pode cometer erros, utilize com cautela!"
+          style={styles.textInput}
+        />
         <TouchableOpacity onPress={handleSend} disabled={isSending}>
           <Ionicons name="send" size={24} color={isSending ? '#aaa' : '#4CAF50'} />
         </TouchableOpacity>
-      </View>
-      <View style={styles.customBottomBar}>
-        <IconButton icon="home" iconColor="white" size={30} onPress={() => router.back()} />
-        <IconButton icon="camera" iconColor="white" size={30} onPress={() => setIsCameraVisible(true)} />
-        <IconButton icon="folder" iconColor="white" size={30} onPress={handleSelectImageFromGallery} />
       </View>
     </KeyboardAvoidingView>
   );
@@ -299,12 +302,12 @@ const ChatScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F3F3F3' },
-  chatContent: { paddingHorizontal: 12, paddingBottom: 10, flexGrow: 1 },
+  chatContent: { paddingHorizontal: 12, paddingBottom: 10, paddingTop: 60, flexGrow: 1 },
   loadMoreButton: { padding: 15, alignSelf: 'center' },
   loadMoreText: { color: '#028C48', fontWeight: 'bold' },
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
   emptyText: { marginTop: 16, fontSize: 16, color: '#aaa', textAlign: 'center' },
-  inputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#E0E0E0', paddingHorizontal: 16, paddingVertical: 8, borderTopWidth: 1, borderColor: '#ccc' },
+  inputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#E0E0E0', paddingHorizontal: 16, paddingVertical: 8, borderTopWidth: 1, borderColor: '#ccc',marginBottom: 60 },
   textInput: { flex: 1, backgroundColor: 'white', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 8, marginRight: 8 },
   messageContainer: { marginVertical: 6 },
   rightAlign: { alignItems: 'flex-end' },
@@ -315,7 +318,7 @@ const styles = StyleSheet.create({
   bubbleText: { color: 'white', fontSize: 14 },
   boldWhite: { color: 'white', fontWeight: 'bold', fontSize: 14, marginBottom: 2 },
   timestamp: { fontSize: 10, color: 'gray', marginBottom: 2 },
-  customBottomBar: { backgroundColor: '#028C48', flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', elevation: 8, height: 60 },
+  customBottomBar: { backgroundColor: '#028C48', flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', height: 120 },
   previewContainer: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: 16 },
   photoPreview: { width: '100%', aspectRatio: 1, borderRadius: 12, backgroundColor: '#ccc' },
   messageInput: { backgroundColor: 'white', borderRadius: 12, padding: 10, elevation: 2, width: '90%', marginTop: 20, minHeight: 80, textAlignVertical: 'top' },
@@ -323,6 +326,8 @@ const styles = StyleSheet.create({
   confirm: { backgroundColor: 'green', marginRight: 20 },
   retake: { backgroundColor: 'red' },
   imagePreview: { width: 200, height: 200, borderRadius: 8, marginTop: 8, backgroundColor: '#ccc' },
+  iconButton: { marginRight: 8, },
+
 });
 
 export default ChatScreen;
