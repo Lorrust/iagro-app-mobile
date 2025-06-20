@@ -175,7 +175,7 @@ const HomeRoute: React.FC<HomeRouteProps> = ({
             </TouchableOpacity>
           </View>
         )}
-        {!loadingChats && !errorChats && (!chats || chats.length === 0) && (
+        {!loadingChats && !errorChats && !chats || chats?.length === 0 && (
           <View style={styles.centeredContent}>
             <Image
               source={require("../../assets/images/intro.png")}
