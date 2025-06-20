@@ -85,7 +85,7 @@ export default function ForgotPassword() {
 
   return (
     <ImageBackground
-      source={require('../../assets/images/plantacao.png')}
+      source={require('../../assets/images/celeiro.png')}
       style={styles.background}
       resizeMode="cover"
     >
