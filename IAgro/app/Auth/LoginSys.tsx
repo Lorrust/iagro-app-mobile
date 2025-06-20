@@ -19,6 +19,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios, { AxiosError } from 'axios';
 import { ButtonCopagro } from '../components/Button';
 import TextInputCopagro from '../components/ButtonTxt';
+import DialogCopagro from '../components/Dialog';
 
 const screenHeight = Dimensions.get('window').height;
 
@@ -28,7 +29,8 @@ export default function SettingsScreen() {
   const [senha, setSenha] = useState('');
   const [loginPressed, setLoginPressed] = useState(false);
   const [loadingLogin, setLoadingLogin] = useState(false);
-  const [loginError, setLoginError] = useState(''); // Já existe para avisos de erro
+  const [loginError, setLoginError] = useState('');
+  const [dialogVisible, setDialogVisible] = useState(false);
 
   // Estados para a tela de Cadastro
   const [registerVisible, setRegisterVisible] = useState(false);
@@ -150,9 +152,7 @@ export default function SettingsScreen() {
         });
 
         console.log('Login realizado com sucesso!', response.data);
-        // Remover o alert aqui se o sucesso for apenas navegação e feedback visual
-        // alert('Login realizado com sucesso!');
-        // Salva o UID em escopo global
+        
         let savedUid = null;
         if (response.data.user?.uid) {
           savedUid = response.data.user.uid.toString();
@@ -291,7 +291,9 @@ export default function SettingsScreen() {
       const response = await axiosService.post('/users/register', registerData);
 
       console.log('Usuário cadastrado com sucesso!', response.data);
-      alert('Cadastro realizado com sucesso! Agora você pode fazer login.');
+      setDialogVisible(true);
+      <DialogCopagro title="Sucesso" content="Cadastro realizado com sucesso! Agora você pode fazer login." visible={dialogVisible} hideDialog={() => setDialogVisible(false)} />
+      // alert('Cadastro realizado com sucesso! Agora você pode fazer login.');
 
       setCorporateName('');
       setFullName('');
@@ -302,7 +304,7 @@ export default function SettingsScreen() {
       setConfirmPassword('');
       setRegisterError('');
 
-      animateDown();
+      // animateDown();
 
     } catch (error) {
       console.log('Erro no cadastro:', error);
@@ -329,7 +331,11 @@ export default function SettingsScreen() {
       setLoadingRegister(false);
     }
   };
-
+  
+  const handleDialogClose = () => {
+    setDialogVisible(false);
+    animateDown();
+  };
 
   // Animação para subir (mostrar cadastro)
   const animateUp = () => {
@@ -558,6 +564,12 @@ export default function SettingsScreen() {
           </ScrollView>
         </Animated.View>
       )}
+      <DialogCopagro 
+        title="Sucesso" 
+        content="Cadastro realizado com sucesso! Agora você pode fazer login." 
+        visible={dialogVisible} 
+        hideDialog={handleDialogClose} 
+      />
     </SafeAreaView>
   );
 }

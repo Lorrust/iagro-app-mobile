@@ -54,6 +54,8 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 20,
+    width: '100%',
+    textAlign: 'center',
   },
   icon: {
     alignSelf: 'center',

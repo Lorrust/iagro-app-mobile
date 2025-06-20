@@ -1,9 +1,8 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useContext } from "react";
 import {
   View,
   StyleSheet,
   Image,
-  Text,
   ScrollView,
   ActivityIndicator,
   TouchableOpacity,
@@ -18,6 +17,7 @@ import {
   BottomNavigation,
   useTheme,
   Searchbar,
+  Text,
 } from "react-native-paper";
 import { Swipeable, RectButton } from "react-native-gesture-handler";
 import AnimatedReanimated, {
@@ -30,8 +30,7 @@ import AnimatedReanimated, {
   SharedValue,
   interpolate,
 } from "react-native-reanimated";
-
-// Componentes e Serviços
+import { ThemeContext } from "../contexts/ThemeContext";
 import LogoCopagroUsers from "../components/LogoCopagroUsers";
 import CameraCapture from "../components/CreateCapture";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -39,10 +38,6 @@ import axiosService from "../../services/axiosService";
 import { router } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { BlurView } from "expo-blur";
-
-// ================================================================= //
-// INTERFACES E TIPOS
-// ================================================================= //
 
 interface ChatData {
   id: string;
@@ -68,6 +63,7 @@ interface HomeRouteProps {
   loadMoreChats: () => Promise<void>;
   handleCardPress: (chatId: string) => void;
   handleAccountPress: () => void;
+  handleThemeToggle: () => void;
   swipeableRef: React.RefObject<Swipeable>;
   animatedHintContainerStyle: { opacity: number };
   animatedCardStyle: { transform: { translateX: number }[] };
@@ -92,13 +88,10 @@ interface CameraRouteProps {
   onClose: () => void;
 }
 
-// ================================================================= //
-// COMPONENTES DE ROTA TIPADOS
-// ================================================================= //
-
 const HomeRoute: React.FC<HomeRouteProps> = ({
   plusPressed,
   setPlusPressed,
+  handleThemeToggle,
   animatedCircle1Style,
   animatedCircle2Style,
   searchQuery,
@@ -118,186 +111,180 @@ const HomeRoute: React.FC<HomeRouteProps> = ({
   renderRightActions,
   setNavigationIndex,
   chats,
-  photoUri,
-  showBottomNavigation,
-}) => (
-  <View style={styles.container}>
-    {plusPressed && (
-      <BlurView intensity={100} tint="light" style={styles.plusContainer}>
-         <View style={styles.animatedCirclesContainer}>
-    <AnimatedReanimated.View style={[styles.animatedCircle, animatedCircle1Style]}>
-      <IconButton
-        icon="account"
-        iconColor="#FFFFFF"
-        size={30}
-        onPress={handleAccountPress}
-      />
-    </AnimatedReanimated.View>
-    <AnimatedReanimated.View style={[styles.animatedCircle, animatedCircle2Style]}>
-      <IconButton
-        icon="theme-light-dark"
-        iconColor="#FFFFFF"
-        size={30}
-      />
-    </AnimatedReanimated.View>
+}) => {
+  const theme = useTheme();
+  const styles = getStyles(theme);
 
-  </View>
-
-        <TouchableOpacity
-          style={[StyleSheet.absoluteFill, { zIndex: 15 }]}
-          // onPress={() => setPlusPressed(false)}
-          activeOpacity={0}
-        />
-      </BlurView>
-    )}
-    <LogoCopagroUsers />
-    <View style={{ flex: 1, width: "100%" }}>
-      <Searchbar
-        icon="magnify"
-        placeholder="Pesquise por um problema..."
-        value={searchQuery}
-        onChangeText={setSearchQuery}
-        style={styles.searchInput}
-      />
-      {loadingChats && filteredChats.length === 0 && (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#028C48" />
-          <Text style={styles.loadingText}>Carregando conversas...</Text>
-        </View>
-      )}
-      {errorChats && (
-        <View style={styles.centeredContent}>
-          <Text style={styles.errorText}>{errorChats}</Text>
-          <TouchableOpacity onPress={fetchUserChats} style={{ marginTop: 20 }}>
-            <Text style={styles.retryText}>Tentar carregar novamente</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-      {!loadingChats && !errorChats && (!chats || chats.length === 0) && (
-        <View style={styles.centeredContent}>
-          <Image
-            source={require("../../assets/images/intro.png")}
-            style={styles.illustration}
-            resizeMode="contain"
+  return (
+    <View style={styles.container}>
+      {plusPressed && (
+        <BlurView intensity={100} tint="light" style={styles.plusContainer}>
+          <View style={styles.animatedCirclesContainer}>
+            <AnimatedReanimated.View
+              style={[styles.animatedCircle, animatedCircle1Style]}
+            >
+              <IconButton
+                icon="account"
+                iconColor="#FFFFFF"
+                size={30}
+                onPress={handleAccountPress}
+              />
+            </AnimatedReanimated.View>
+            <AnimatedReanimated.View
+              style={[styles.animatedCircle, animatedCircle2Style]}
+            >
+              <IconButton
+                icon="theme-light-dark"
+                iconColor="#FFFFFF"
+                size={30}
+                onPress={handleThemeToggle}
+              />
+            </AnimatedReanimated.View>
+          </View>
+          <TouchableOpacity
+            style={[StyleSheet.absoluteFill, { zIndex: 15 }]}
+            activeOpacity={0}
           />
-          <Text style={styles.description}>
-            Análises e consultas fenológicas aparecerão {"\n"} aqui após sua
-            primeira foto
-          </Text>
-          <Image
-            source={require("../../assets/images/seta.png")}
-            style={styles.seta}
-          />
-        </View>
+        </BlurView>
       )}
-      {!errorChats && filteredChats.length > 0 && (
-        <ScrollView
-          contentContainerStyle={styles.chatsListContainer}
-          showsVerticalScrollIndicator={true}
-          bounces={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          {filteredChats.map((chat, index) => (
-            <View key={chat.id} style={styles.chatItemContainer}>
-              {index === 0 && (
-                <AnimatedReanimated.View
-                  style={[
-                    styles.hintActionContainer,
-                    animatedHintContainerStyle,
-                  ]}
-                >
-                  <IconButton icon="delete" iconColor="#fff" size={30} />
-                </AnimatedReanimated.View>
-              )}
-              <Swipeable
-                ref={index === 0 ? swipeableRef : null}
-                renderRightActions={(progress, dragX) =>
-                  renderRightActions(progress, dragX, chat.id)
-                }
-                onSwipeableWillOpen={() => {
-                  if (index === 0) {
-                    hintOpacity.value = withTiming(0, { duration: 50 });
-                  }
-                }}
-              >
-                <AnimatedReanimated.View
-                  style={index === 0 ? animatedCardStyle : undefined}
-                >
-                  <TouchableOpacity
-                    onPress={() => handleCardPress(chat.id)}
-                    activeOpacity={0.9}
+      <LogoCopagroUsers />
+      <View style={{ flex: 1, width: "100%" }}>
+        {chats && chats.length !== 0 && (
+          <Searchbar
+            icon="magnify"
+            placeholder="Pesquise por um problema..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            style={styles.searchInput}
+          />
+        )}
+        {loadingChats && filteredChats.length === 0 && (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={theme.colors.primary} />
+            <Text style={styles.loadingText}>Carregando conversas...</Text>
+          </View>
+        )}
+        {errorChats && (
+          <View style={styles.centeredContent}>
+            <Text style={styles.errorText}>{errorChats}</Text>
+            <TouchableOpacity
+              onPress={fetchUserChats}
+              style={{ marginTop: 20 }}
+            >
+              <Text style={styles.retryText}>Tentar carregar novamente</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+        {!loadingChats && !errorChats && (!chats || chats.length === 0) && (
+          <View style={styles.centeredContent}>
+            <Image
+              source={require("../../assets/images/intro.png")}
+              style={styles.illustration}
+              resizeMode="contain"
+            />
+            <Text style={styles.description}>
+              Análises e consultas fenológicas aparecerão {"\n"} aqui após sua
+              primeira foto
+            </Text>
+            <Image
+              source={require("../../assets/images/seta.png")}
+              style={styles.seta}
+            />
+          </View>
+        )}
+        {!errorChats && filteredChats.length > 0 && (
+          <ScrollView
+            contentContainerStyle={styles.chatsListContainer}
+            showsVerticalScrollIndicator={true}
+            bounces={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            {filteredChats.map((chat, index) => (
+              <View key={chat.id} style={styles.chatItemContainer}>
+                {index === 0 && (
+                  <AnimatedReanimated.View
+                    style={[styles.hintActionContainer, animatedHintContainerStyle]}
                   >
-                    <Card style={styles.chatCard}>
-                      <Card.Content>
-                        <Title style={styles.cardTitle}>
-                          {chat.title || "Título não especificado"}
-                        </Title>
-                        <Paragraph
-                          style={styles.cardDescription}
-                          numberOfLines={2}
-                          ellipsizeMode="tail"
-                        >
-                          {chat.lastDiagnosis?.description ||
-                            "Descrição não especificada"}
-                        </Paragraph>
-                      </Card.Content>
-                    </Card>
-                  </TouchableOpacity>
-                </AnimatedReanimated.View>
-              </Swipeable>
-            </View>
-          ))}
-          {hasMore &&
-            (loadingChats ? (
-              <View style={{ paddingVertical: 20, alignItems: "center" }}>
-                <ActivityIndicator size="large" color="#028C48" />
-                <Text style={styles.loadingText}>
-                  Carregando mais conversas...
-                </Text>
+                    <IconButton icon="delete" iconColor="#fff" size={30} />
+                  </AnimatedReanimated.View>
+                )}
+                <Swipeable
+                  ref={index === 0 ? swipeableRef : null}
+                  renderRightActions={(progress, dragX) =>
+                    renderRightActions(progress, dragX, chat.id)
+                  }
+                  onSwipeableWillOpen={() => {
+                    if (index === 0) {
+                      hintOpacity.value = withTiming(0, { duration: 50 });
+                    }
+                  }}
+                >
+                  <AnimatedReanimated.View
+                    style={index === 0 ? animatedCardStyle : undefined}
+                  >
+                    <TouchableOpacity
+                      onPress={() => handleCardPress(chat.id)}
+                      activeOpacity={0.9}
+                    >
+                      <Card style={styles.chatCard}>
+                        <Card.Content>
+                          <Title style={styles.cardTitle}>
+                            {chat.title || "Título não especificado"}
+                          </Title>
+                          <Paragraph
+                            style={styles.cardDescription}
+                            numberOfLines={2}
+                            ellipsizeMode="tail"
+                          >
+                            {chat.lastDiagnosis?.description ||
+                              "Descrição não especificada"}
+                          </Paragraph>
+                        </Card.Content>
+                      </Card>
+                    </TouchableOpacity>
+                  </AnimatedReanimated.View>
+                </Swipeable>
               </View>
-            ) : (
-              <TouchableOpacity
-                onPress={loadMoreChats}
-                style={{ padding: 10, alignItems: "center" }}
-              >
-                <Text style={{ color: "#028C48", fontSize: 16 }}>
-                  Ver mais conversas
-                </Text>
-              </TouchableOpacity>
             ))}
-        </ScrollView>
-      )}
+            {hasMore &&
+              (loadingChats ? (
+                <View style={{ paddingVertical: 20, alignItems: "center" }}>
+                  <ActivityIndicator
+                    size="large"
+                    color={theme.colors.primary}
+                  />
+                  <Text style={styles.loadingText}>
+                    Carregando mais conversas...
+                  </Text>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  onPress={loadMoreChats}
+                  style={{ padding: 10, alignItems: "center" }}
+                >
+                  <Text style={styles.loadMoreText}>Ver mais conversas</Text>
+                </TouchableOpacity>
+              ))}
+          </ScrollView>
+        )}
+      </View>
     </View>
-    {!showBottomNavigation &&
-      !loadingChats &&
-      !photoUri &&
-      (!chats || chats.length === 0) && (
-        <IconButton
-          icon="camera"
-          size={50}
-          mode="contained"
-          style={styles.openCameraButton}
-          onPress={() => setNavigationIndex(1)}
-          iconColor="#fff"
-        />
-      )}
-  </View>
-);
+  );
+};
 
 const CameraRoute: React.FC<CameraRouteProps> = ({
   onPhotoCaptured,
   onClose,
 }) => <CameraCapture onPhotoCaptured={onPhotoCaptured} onClose={onClose} />;
 
-// ================================================================= //
-// COMPONENTE PRINCIPAL TIPADO
-// ================================================================= //
-
 const IntroScreen: React.FC = () => {
-  const theme = useTheme();
+  const paperTheme = useTheme();
+  const { toggleTheme } = useContext(ThemeContext);
+  const styles = getStyles(paperTheme);
+
   const navigationTheme = {
-    ...theme,
-    colors: { ...theme.colors, secondaryContainer: "#01572b" },
+    ...paperTheme,
+    colors: { ...paperTheme.colors, secondaryContainer: "#01572b" },
   };
 
   const [photoUri, setPhotoUri] = useState<string | null>(null);
@@ -344,7 +331,6 @@ const IntroScreen: React.FC = () => {
     },
   ]);
 
-  // --- ANIMAÇÕES ---
   const hintTranslateX = useSharedValue<number>(0);
   const hintOpacity = useSharedValue<number>(0);
   const plusIconRotation = useSharedValue(0);
@@ -365,11 +351,10 @@ const IntroScreen: React.FC = () => {
     transform: [{ rotate: `${plusIconRotation.value}deg` }],
   }));
 
-   const animatedCircle1Style = useAnimatedStyle(() => ({
+  const animatedCircle1Style = useAnimatedStyle(() => ({
     opacity: circlesAnimation.value,
     transform: [
       { scale: circlesAnimation.value },
-      // Move o primeiro ícone para cima
       { translateY: interpolate(circlesAnimation.value, [0, 1], [0, -80]) },
     ],
   }));
@@ -416,7 +401,6 @@ const IntroScreen: React.FC = () => {
     }
   }, [chats, loadingChats, hasAnimatedHint]);
 
-  // --- FUNÇÕES ---
   const renderRightActions = (
     progress: any,
     dragX: any,
@@ -460,7 +444,6 @@ const IntroScreen: React.FC = () => {
         prev ? prev.filter((chat) => chat.id !== chatId) : []
       );
     } catch (error) {
-      console.error("Erro ao excluir o chat:", error);
       alert("Erro ao excluir o chat.");
     }
   };
@@ -516,7 +499,6 @@ const IntroScreen: React.FC = () => {
         setNextCursor(response.data.pagination.nextCursor);
       }
     } catch (error) {
-      console.error("❌ Erro ao carregar mais conversas:", error);
       setErrorChats("Erro ao carregar mais conversas.");
     } finally {
       setLoadingChats(false);
@@ -596,10 +578,14 @@ const IntroScreen: React.FC = () => {
   };
 
   const handleAccountPress = (): void => {
-    setPlusPressed(false); 
-    console.log("Abrindo perfil do usuário");
+    setPlusPressed(false);
     router.push("/Screens/UserProfile");
-  }
+  };
+
+  const handleThemeToggle = () => {
+    toggleTheme();
+    setPlusPressed(false);
+  };
 
   const handleIndexChange = (index: number): void => {
     if (index === 2) {
@@ -635,6 +621,7 @@ const IntroScreen: React.FC = () => {
               loadMoreChats,
               handleCardPress,
               handleAccountPress,
+              handleThemeToggle,
               swipeableRef,
               animatedHintContainerStyle,
               animatedCardStyle,
@@ -663,7 +650,7 @@ const IntroScreen: React.FC = () => {
     }
   };
 
-   const renderAnimatedIcon = ({
+  const renderAnimatedIcon = ({
     route,
     focused,
     color,
@@ -672,15 +659,9 @@ const IntroScreen: React.FC = () => {
     focused: boolean;
     color: string;
   }) => {
-    // Define o nome do ícone (para ícones normais)
     const iconName = focused ? route.focusedIcon : route.unfocusedIcon;
-
-    // O componente do ícone em si
     const icon = <IconButton icon={iconName} size={30} iconColor={color} />;
-
-    // Para o ícone 'plus', usamos um nome fixo
     const plusIcon = <IconButton icon="plus" size={30} iconColor={color} />;
-
     return (
       <View style={styles.iconContainer}>
         {route.key === "plus" ? (
@@ -752,157 +733,200 @@ const IntroScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F3F3F3", paddingTop: 60 },
-  plusContainer: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 10,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  animatedCirclesContainer: {
-    position: 'absolute',
-    bottom: 0, // Posição acima da barra de navegação
-    right: 45,   // Posição horizontal alinhada com o botão "+"
-    alignItems: 'center',
-    zIndex: 20,
-  },
-  animatedCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28, // Deixa o fundo do ícone redondo
-    backgroundColor: '#028C48', // Fundo verde para o ícone
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'absolute', // Permite que a animação controle a posição
-    marginBottom: 15, // Espaçamento entre os botões
-  },
-   iconContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: '100%',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  chatItemContainer: {
-    marginVertical: 10,
-    marginHorizontal: 10,
-    borderRadius: 12,
-    overflow: "hidden",
-    backgroundColor: "transparent",
-  },
-  hintActionContainer: {
-    backgroundColor: "#D32F2F",
-    justifyContent: "center",
-    alignItems: "center",
-    position: "absolute",
-    right: 0,
-    top: 0,
-    bottom: 0,
-    width: 75,
-    borderRadius: 12,
-  },
-  deleteButton: {
-    backgroundColor: "#D32F2F",
-    justifyContent: "center",
-    alignItems: "center",
-    width: 75,
-    borderRadius: 12,
-  },
-  loadingText: { marginTop: 10, fontSize: 16, color: "#028C48" },
-  errorText: { color: "red", fontSize: 16, textAlign: "center", marginTop: 20 },
-  retryText: {
-    color: "#028C48",
-    fontSize: 16,
-    textDecorationLine: "underline",
-  },
-  searchInput: {
-    width: "90%",
-    marginTop: 20,
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    alignSelf: "center",
-    elevation: 2,
-  },
-  centeredContent: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    width: "100%",
-  },
-  illustration: { width: "100%", height: 450, marginTop: 0, marginBottom: 20 },
-  description: {
-    textAlign: "center",
-    fontSize: 16,
-    color: "black",
-    marginBottom: 20,
-    paddingHorizontal: 20,
-  },
-  seta: { width: 30, height: 30, marginTop: -10, marginBottom: 20, left: 145 },
-  openCameraButton: {
-    backgroundColor: "#028C48",
-    position: "absolute",
-    bottom: 30,
-    right: 30,
-    zIndex: 1,
-  },
-  previewContainer: {
-    flexGrow: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    width: "100%",
-    backgroundColor: "#F3F3F3",
-    paddingVertical: 20,
-    paddingTop: 60,
-  },
-  photoPreview: {
-    width: "90%",
-    aspectRatio: 1,
-    borderRadius: 12,
-    backgroundColor: "#ccc",
-    alignSelf: "center",
-  },
-  previewTextInput: {
-    backgroundColor: "white",
-    borderRadius: 12,
-    padding: 10,
-    elevation: 2,
-    width: "90%",
-    marginTop: 20,
-    minHeight: 80,
-    textAlignVertical: "top",
-  },
-  actions: { flexDirection: "row", marginTop: 20 },
-  confirm: { backgroundColor: "green", marginRight: 20 },
-  retake: { backgroundColor: "red" },
-  chatsListContainer: {
-    paddingHorizontal: 10,
-    paddingBottom: 70,
-    paddingTop: 20,
-  },
-  chatCard: {
-    elevation: 4,
-    shadowColor: "rgba(0,0,0,0.5)",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 10,
-  },
-  cardTitle: { fontSize: 20, fontWeight: "600", color: "black" },
-  cardDescription: {
-    fontSize: 15,
-    color: "#555",
-    marginTop: 6,
-    lineHeight: 18,
-  },
-  bottomNavigation: { backgroundColor: "#028C48" },
-});
+const getStyles = (theme: any) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.colors.background,
+      paddingTop: 60,
+    },
+    plusContainer: {
+      ...StyleSheet.absoluteFillObject,
+      zIndex: 10,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    animatedCirclesContainer: {
+      position: "absolute",
+      bottom: 0,
+      right: 45,
+      alignItems: "center",
+      zIndex: 20,
+    },
+    animatedCircle: {
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      backgroundColor: theme.colors.primary,
+      justifyContent: "center",
+      alignItems: "center",
+      position: "absolute",
+      marginBottom: 15,
+    },
+    iconContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      width: "100%",
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    chatItemContainer: {
+      marginVertical: 10,
+      marginHorizontal: 10,
+      borderRadius: 12,
+      overflow: "hidden",
+      backgroundColor: "transparent",
+    },
+    hintActionContainer: {
+      backgroundColor: "#D32F2F",
+      justifyContent: "center",
+      alignItems: "center",
+      position: "absolute",
+      right: 0,
+      top: 0,
+      bottom: 0,
+      width: 75,
+      borderRadius: 12,
+    },
+    deleteButton: {
+      backgroundColor: "#D32F2F",
+      justifyContent: "center",
+      alignItems: "center",
+      width: 75,
+      borderRadius: 12,
+    },
+    loadingText: {
+      marginTop: 10,
+      fontSize: 16,
+      color: theme.colors.primary,
+    },
+    errorText: {
+      color: theme.colors.error,
+      fontSize: 16,
+      textAlign: "center",
+      marginTop: 20,
+    },
+    retryText: {
+      color: theme.colors.primary,
+      fontSize: 16,
+      textDecorationLine: "underline",
+    },
+    searchInput: {
+      width: "90%",
+      marginTop: 20,
+      backgroundColor: theme.colors.surface,
+      borderRadius: 10,
+      paddingHorizontal: 10,
+      alignSelf: "center",
+      elevation: 2,
+    },
+    centeredContent: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      width: "100%",
+    },
+    illustration: {
+      width: "100%",
+      height: 450,
+      marginTop: 0,
+      marginBottom: 20,
+    },
+    description: {
+      textAlign: "center",
+      fontSize: 16,
+      color: theme.colors.onBackground,
+      marginBottom: 20,
+      paddingHorizontal: 20,
+    },
+    seta: {
+      width: 30,
+      height: 30,
+      marginTop: -10,
+      marginBottom: 40,
+      left: 130,
+    },
+    openCameraButton: {
+      backgroundColor: theme.colors.primary,
+      position: "absolute",
+      bottom: 20,
+      right: 20,
+      zIndex: 1,
+    },
+    previewContainer: {
+      flexGrow: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      width: "100%",
+      backgroundColor: theme.colors.background,
+      paddingVertical: 20,
+      paddingTop: 60,
+    },
+    photoPreview: {
+      width: "90%",
+      aspectRatio: 1,
+      borderRadius: 12,
+      backgroundColor: theme.colors.surface,
+      alignSelf: "center",
+    },
+    previewTextInput: {
+      backgroundColor: theme.colors.surface,
+      borderRadius: 12,
+      padding: 10,
+      elevation: 2,
+      width: "90%",
+      marginTop: 20,
+      minHeight: 80,
+      textAlignVertical: "top",
+    },
+    actions: {
+      flexDirection: "row",
+      marginTop: 20,
+    },
+    confirm: {
+      backgroundColor: "green",
+      marginRight: 20,
+    },
+    retake: {
+      backgroundColor: theme.colors.error,
+    },
+    chatsListContainer: {
+      paddingHorizontal: 10,
+      paddingBottom: 70,
+      paddingTop: 20,
+    },
+    chatCard: {
+      elevation: 4,
+      shadowColor: "rgba(0,0,0,0.5)",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 3.84,
+      backgroundColor: theme.colors.surface,
+      borderRadius: 12,
+      padding: 10,
+    },
+    cardTitle: {
+      fontSize: 20,
+      fontWeight: "600",
+      color: theme.colors.onSurface,
+    },
+    cardDescription: {
+      fontSize: 15,
+      color: theme.colors.onSurfaceVariant,
+      marginTop: 6,
+      lineHeight: 18,
+    },
+    bottomNavigation: {
+      backgroundColor: theme.colors.primary,
+    },
+    loadMoreText: {
+      color: theme.colors.primary,
+      fontSize: 16,
+    },
+  });
 
 export default IntroScreen;

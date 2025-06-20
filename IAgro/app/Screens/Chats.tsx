@@ -13,8 +13,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, router } from 'expo-router';
-import LogoCopagroUsers from '../components/LogoCopagroUsers';
+import { useLocalSearchParams } from 'expo-router';
 import axiosService from '../../services/axiosService';
 import * as ImagePicker from 'expo-image-picker';
 import CameraCapture from '../components/CreateCapture';
@@ -29,6 +28,7 @@ type ChatMessage =
       text: string;
       timestamp: string;
       imageUrl?: string;
+      isLoading?: boolean;
     }
   | {
       id: string;
@@ -52,15 +52,25 @@ const ChatScreen = () => {
   const [isCameraVisible, setIsCameraVisible] = useState(false);
   const [contextEnabled, setContextEnabled] = useState(true);
   const [isSending, setIsSending] = useState(false);
+
+  // --- NOVOS ESTADOS PARA PAGINAÇÃO CORRETA ---
   const [showLoadMore, setShowLoadMore] = useState(false);
-  const [limit, setLimit] = useState(20);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const PAGE_SIZE = 20; // Define um tamanho fixo para cada página de mensagens
 
   const flatListRef = useRef<FlatList>(null);
   const hasScrolledRef = useRef(false);
 
-  // LÓGICA DE FETCH ATUALIZADA
-  const fetchMessages = async (overrideLimit?: number): Promise<void> => {
-    setLoading(true);
+  // --- FUNÇÃO DE BUSCA DE MENSAGENS REFEITA ---
+  const fetchMessages = async (isLoadMore = false): Promise<void> => {
+    if (isLoadMore) {
+      if (isLoadingMore || !nextCursor) return; // Previne múltiplas chamadas
+      setIsLoadingMore(true);
+    } else {
+      setLoading(true);
+    }
+
     try {
       if (!chatId) {
         setError('Chat ID não fornecido.');
@@ -68,26 +78,20 @@ const ChatScreen = () => {
         return;
       }
 
-      const effectiveLimit = overrideLimit ?? limit;
-      const response = await axiosService.get(`/chats/${chatId}/messages?limit=${effectiveLimit}&orderDirection=asc`);
-
-      const total = response.data.pagination?.totalSubDocs || 0;
-      const rawMessages = response.data.messages || [];
-
-      // LÓGICA DE FALLBACK SOLICITADA
-      if (rawMessages.length === 0 && total > 0 && !overrideLimit) {
-        console.warn(`Nenhuma mensagem com limit=${effectiveLimit}, mas total é ${total}. Buscando novamente com o total.`);
-        return fetchMessages(total);
+      let url = `/chats/${chatId}/messages?limit=${PAGE_SIZE}&orderDirection=desc`;
+      if (isLoadMore && nextCursor) {
+        url += `&lastMessageId=${nextCursor}`;
       }
 
-      setShowLoadMore(total > effectiveLimit && rawMessages.length > 0 && rawMessages.length < total);
+      const response = await axiosService.get(url);
+      const rawMessages = response.data.messages || [];
+      const newNextCursor = response.data.pagination?.nextCursor || null;
 
-      if (Array.isArray(rawMessages)) {
-        type MessageFromApi = any; // Simplificado para evitar erros
+      if (Array.isArray(rawMessages) && rawMessages.length > 0) {
+        type MessageFromApi = any;
         const parsedMessages: ChatMessage[] = rawMessages.map((msg: MessageFromApi) => {
           const isUser = msg.sender === 'user';
           const timestamp = new Date((msg.timestamp?._seconds ?? 0) * 1000).toISOString();
-
           if (msg.diagnosis) {
             return {
               id: msg.id, isFromUser: isUser, type: 'diagnostico',
@@ -104,30 +108,49 @@ const ChatScreen = () => {
           };
         });
 
-        parsedMessages.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-        setMessages(parsedMessages);
-      } else {
-        setMessages([]);
+        // Adiciona mensagens antigas no topo ou define as iniciais
+        setMessages((prevMessages) =>
+          isLoadMore ? [...parsedMessages, ...prevMessages] : parsedMessages
+        );
+        setNextCursor(newNextCursor);
+        setShowLoadMore(!!newNextCursor); // Mostra o botão se houver mais páginas
+
+      } else if (!isLoadMore) {
+        setMessages([]); // Limpa se não houver mensagens iniciais
       }
     } catch (err: any) {
       console.error('❌ Erro ao buscar mensagens:', err.response?.data || err.message);
       setError('Erro ao carregar as mensagens.');
     } finally {
-      setLoading(false);
+      if (isLoadMore) {
+        setIsLoadingMore(false);
+      } else {
+        setLoading(false);
+      }
     }
   };
 
+  // --- EFEITO INICIAL REFEITO ---
   useEffect(() => {
-    fetchMessages();
-  }, [chatId, limit]);
+    if (chatId) {
+      // Reseta o estado ao trocar de chat
+      setMessages([]);
+      setNextCursor(null);
+      setShowLoadMore(false);
+      hasScrolledRef.current = false;
+      fetchMessages(false); // Busca a primeira página de mensagens
+    }
+  }, [chatId]);
 
   const scrollToBottom = (animated = true) => {
+    // A FlatList está invertida, então rolamos para o início
     if (messages.length > 0) {
-      setTimeout(() => flatListRef.current?.scrollToEnd({ animated }), 200);
+      setTimeout(() => flatListRef.current?.scrollToOffset({ offset: 0, animated }), 200);
     }
   };
 
   useEffect(() => {
+    // Rola para o final apenas no carregamento inicial
     if (!loading && messages.length > 0 && !hasScrolledRef.current) {
       scrollToBottom(false);
       hasScrolledRef.current = true;
@@ -142,31 +165,55 @@ const ChatScreen = () => {
       id: `${Date.now()}-user`, isFromUser: true, type: 'text',
       text: input.trim(), timestamp: new Date().toISOString(),
     };
-    setMessages((prev) => [...prev, userMessage]);
+
+    const thinkingMessage: ChatMessage = {
+      id: 'ia-thinking-placeholder', isFromUser: false, type: 'text',
+      text: 'A IA está pensando...', timestamp: new Date().toISOString(), isLoading: true,
+    };
+
+    // Adiciona as mensagens no início, pois a lista está invertida
+    setMessages((prev) => [thinkingMessage, userMessage, ...prev]);
     setInput('');
     scrollToBottom();
 
     try {
       const idToken = await AsyncStorage.getItem('idToken');
       const userUid = await AsyncStorage.getItem('uid');
-      if (!idToken || !userUid) { alert('Autenticação falhou.'); return; }
-      
+      if (!idToken || !userUid) {
+        alert('Autenticação falhou.');
+        setMessages((prev) => prev.filter(m => m.id !== 'ia-thinking-placeholder'));
+        return;
+      }
+
       const response = await axiosService.post(
         `/chats/${userUid}/message?chat=${chatId}&context=${contextEnabled}`,
         { message: input.trim() },
         { headers: { Authorization: `Bearer ${idToken}` } }
       );
       const ia = response.data.iaResponse;
+
       if (ia?.mensagem) {
         const iaMessage: ChatMessage = {
           id: `${Date.now()}-ia`, isFromUser: false, type: 'text',
           text: ia.mensagem, timestamp: new Date().toISOString(),
         };
-        setMessages((prev) => [...prev.filter(m => m.id !== userMessage.id), userMessage, iaMessage]);
-        scrollToBottom();
+
+        setMessages((prev) => [
+          iaMessage,
+          ...prev.filter(m => m.id !== 'ia-thinking-placeholder' && m.id !== userMessage.id),
+        ]);
+        // Re-busca as mensagens para garantir consistência
+        setTimeout(() => fetchMessages(), 1000);
+      } else {
+        setMessages((prev) => prev.filter(m => m.id !== 'ia-thinking-placeholder'));
       }
-    } catch (error) { console.error('Erro ao enviar mensagem:', error);
-    } finally { setIsSending(false); }
+    } catch (error) {
+      console.error('Erro ao enviar mensagem:', error);
+      setMessages((prev) => prev.filter(m => m.id !== 'ia-thinking-placeholder'));
+      alert('A IA não conseguiu responder. Tente novamente.');
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const handlePhotoCaptured = (uri: string) => { setPhotoUri(uri); setIsCameraVisible(false); };
@@ -174,6 +221,19 @@ const ChatScreen = () => {
   const handleConfirm = async () => {
     if (isSending || !photoUri || !chatId || !message.trim()) return;
     setIsSending(true);
+
+    const userMessageContent: ChatMessage = {
+        id: `${Date.now()}`,
+        isFromUser: true,
+        type: 'text',
+        text: message.trim(),
+        timestamp: new Date().toISOString(),
+        imageUrl: photoUri
+    };
+    // Adiciona a mensagem do usuário na UI imediatamente
+    setMessages(prev => [userMessageContent, ...prev]);
+    scrollToBottom();
+
     try {
       const idToken = await AsyncStorage.getItem('idToken');
       const userUid = await AsyncStorage.getItem('uid');
@@ -183,20 +243,23 @@ const ChatScreen = () => {
       formData.append('file', { uri: photoUri, type: 'image/png', name: 'foto.png' } as any);
       formData.append('message', message.trim());
 
-      setMessages((prev) => [...prev, {
-        id: `${Date.now()}`, isFromUser: true, type: 'text',
-        text: message.trim(), timestamp: new Date().toISOString(), imageUrl: photoUri
-      }]);
-      scrollToBottom();
-
       await axiosService.post(`/chats/${userUid}/message?chat=${chatId}&context=${contextEnabled}`, formData,
         { headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${idToken}` } }
       );
+
       setPhotoUri(null);
       setMessage('');
+      // Re-busca as mensagens do servidor para obter a resposta da IA e confirmar a mensagem do usuário
       setTimeout(() => fetchMessages(), 2000);
-    } catch (error) { console.error('Erro ao enviar foto:', error); alert('Erro ao enviar a foto.');
-    } finally { setIsSending(false); }
+
+    } catch (error) {
+      console.error('Erro ao enviar foto:', error);
+      alert('Erro ao enviar a foto.');
+      // Remove a mensagem otimista em caso de erro
+      setMessages(prev => prev.filter(m => m.id !== userMessageContent.id));
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const handleRetake = () => { setPhotoUri(null); setIsCameraVisible(true); };
@@ -215,8 +278,17 @@ const ChatScreen = () => {
         <Text style={styles.timestamp}>{new Date(item.timestamp).toLocaleString()}</Text>
         {item.type === 'text' && (item.text || item.imageUrl) && (
           <View style={[styles.bubble, isUser ? styles.userBubble : styles.botBubble]}>
-            {item.text ? <Text style={styles.bubbleText}>{item.text}</Text> : null}
-            {item.imageUrl && <Image source={{ uri: item.imageUrl }} style={styles.imagePreview} resizeMode="cover" />}
+            {item.isLoading ? (
+              <View style={styles.thinkingContainer}>
+                <ActivityIndicator size="small" color="#FFFFFF" style={{ marginRight: 8 }} />
+                <Text style={styles.bubbleText}>{item.text}</Text>
+              </View>
+            ) : (
+              <>
+                {item.text ? <Text style={styles.bubbleText}>{item.text}</Text> : null}
+                {item.imageUrl && <Image source={{ uri: item.imageUrl }} style={styles.imagePreview} resizeMode="cover" />}
+              </>
+            )}
           </View>
         )}
         {item.type === 'diagnostico' && (
@@ -232,15 +304,15 @@ const ChatScreen = () => {
   };
   
   const renderEmptyListComponent = () => (
-    <View style={styles.emptyContainer}>
+    <View style={[styles.emptyContainer, { transform: [{ scaleY: -1 }] }]}>
       <Ionicons name="chatbubbles-outline" size={60} color="#ccc" />
       <Text style={styles.emptyText}>
-        {error ? error : "Nenhuma mensagem aqui ainda.\nEnvie uma mensagem para começar!"}
+        {error ? error : 'Nenhuma mensagem ainda. Comece a conversa!'}
       </Text>
     </View>
   );
 
-  if (loading && messages.length === 0 && !error) {
+  if (loading && messages.length === 0) {
     return (
       <View style={styles.emptyContainer}>
         <ActivityIndicator size="large" color="#028C48" />
@@ -253,7 +325,6 @@ const ChatScreen = () => {
   if (photoUri) {
     return (
       <ScrollView contentContainerStyle={styles.previewContainer}>
-        <LogoCopagroUsers />
         <Image source={{ uri: photoUri }} style={styles.photoPreview} resizeMode="contain" />
         <TextInput placeholder="Detalhe o seu problema (obrigatório)" value={message} onChangeText={setMessage} multiline numberOfLines={3} style={styles.messageInput} />
         <View style={styles.actions}>
@@ -265,60 +336,73 @@ const ChatScreen = () => {
   }
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <LogoCopagroUsers />
-      <FlatList
-        ref={flatListRef}
-        data={messages}
-        renderItem={renderMessage}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.chatContent}
-        ListEmptyComponent={renderEmptyListComponent}
-        ListHeaderComponent={
-          showLoadMore ? (
-            <TouchableOpacity style={styles.loadMoreButton} onPress={() => setLimit((prev) => prev + 10)} disabled={loading}>
-              {loading ? <ActivityIndicator color="#028C48" /> : <Text style={styles.loadMoreText}>Ver mensagens anteriores</Text>}
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
+      >
+        <View style={{ flex: 1 }}>
+          <FlatList
+            ref={flatListRef}
+            data={messages}
+            renderItem={renderMessage}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.chatContent}
+            ListEmptyComponent={renderEmptyListComponent}
+            // --- BOTÃO DE CARREGAR MAIS MODIFICADO ---
+            ListFooterComponent={ // Alterado para Footer por causa da inversão
+              showLoadMore ? (
+                <TouchableOpacity style={styles.loadMoreButton} onPress={() => fetchMessages(true)} disabled={isLoadingMore}>
+                  {isLoadingMore ? <ActivityIndicator color="#028C48" /> : <Text style={styles.loadMoreText}>Ver mensagens anteriores</Text>}
+                </TouchableOpacity>
+              ) : null
+            }
+            keyboardShouldPersistTaps="handled"
+            inverted // <<< ESSA É A MÁGICA PARA O CHAT FUNCIONAR CORRETAMENTE
+          />
+          <View style={styles.inputContainer}>
+            <TouchableOpacity onPress={() => setIsCameraVisible(true)} style={styles.iconButton}>
+              <Ionicons name="camera" size={24} color="#4CAF50" />
             </TouchableOpacity>
-          ) : null
-        }
-      />
-      <View style={styles.inputContainer}>
-        <TouchableOpacity onPress={() => setIsCameraVisible(true)} style={styles.iconButton}>
-          <Ionicons name="camera" size={24} color="#4CAF50" />
-        </TouchableOpacity>
-        <TextInput
-          value={input}
-          onChangeText={setInput}
-          placeholder="IAGRO pode cometer erros, utilize com cautela!"
-          style={styles.textInput}
-        />
-        <TouchableOpacity onPress={handleSend} disabled={isSending}>
-          <Ionicons name="send" size={24} color={isSending ? '#aaa' : '#4CAF50'} />
-        </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
-  );
+            <TouchableOpacity onPress={handleSelectImageFromGallery} style={styles.iconButton}>
+              <Ionicons name="images" size={24} color="#4CAF50" />
+            </TouchableOpacity>
+            <TextInput
+              value={input}
+              onChangeText={setInput}
+              placeholder="Digite sua mensagem..."
+              style={styles.textInput}
+              multiline
+            />
+            <TouchableOpacity onPress={handleSend} disabled={isSending}>
+              <Ionicons name="send" size={24} color={isSending ? '#aaa' : '#4CAF50'} />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    );
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F3F3F3' },
-  chatContent: { paddingHorizontal: 12, paddingBottom: 10, paddingTop: 60, flexGrow: 1 },
+  // Padding modificado para a lista invertida
+  chatContent: { paddingHorizontal: 12, paddingVertical: 10, flexGrow: 1 },
   loadMoreButton: { padding: 15, alignSelf: 'center' },
   loadMoreText: { color: '#028C48', fontWeight: 'bold' },
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
   emptyText: { marginTop: 16, fontSize: 16, color: '#aaa', textAlign: 'center' },
-  inputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#E0E0E0', paddingHorizontal: 16, paddingVertical: 8, borderTopWidth: 1, borderColor: '#ccc' },
-  textInput: { flex: 1, backgroundColor: 'white', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 8, marginRight: 8 },
-  messageContainer: { marginVertical: 6 },
+  // MarginBottom removido ou ajustado
+  inputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', padding: 8, borderTopWidth: 1, borderColor: '#ccc' },
+  textInput: { flex: 1, backgroundColor: '#F0F0F0', borderRadius: 20, paddingVertical: 8, paddingHorizontal: 15, marginRight: 8, fontSize: 16 },
+  messageContainer: { marginVertical: 6, paddingHorizontal: 4 }, // Padding Horizontal adicionado para evitar corte
   rightAlign: { alignItems: 'flex-end' },
   leftAlign: { alignItems: 'flex-start' },
-  bubble: { borderRadius: 12, padding: 10, maxWidth: '80%' },
+  bubble: { borderRadius: 12, padding: 10, maxWidth: '80%', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 1.41, elevation: 2 },
   userBubble: { backgroundColor: '#4CAF50' },
   botBubble: { backgroundColor: '#424242' },
   bubbleText: { color: 'white', fontSize: 14 },
   boldWhite: { color: 'white', fontWeight: 'bold', fontSize: 14, marginBottom: 2 },
-  timestamp: { fontSize: 10, color: 'gray', marginBottom: 2 },
-  customBottomBar: { backgroundColor: '#028C48', flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', height: 10 },
+  timestamp: { fontSize: 10, color: 'gray', marginBottom: 2, marginHorizontal: 5 },
   previewContainer: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: 16 },
   photoPreview: { width: '100%', aspectRatio: 1, borderRadius: 12, backgroundColor: '#ccc' },
   messageInput: { backgroundColor: 'white', borderRadius: 12, padding: 10, elevation: 2, width: '90%', marginTop: 20, minHeight: 80, textAlignVertical: 'top' },
@@ -326,8 +410,11 @@ const styles = StyleSheet.create({
   confirm: { backgroundColor: 'green', marginRight: 20 },
   retake: { backgroundColor: 'red' },
   imagePreview: { width: 200, height: 200, borderRadius: 8, marginTop: 8, backgroundColor: '#ccc' },
-  iconButton: { marginRight: 8, },
-
+  iconButton: { padding: 4, marginRight: 4 },
+  thinkingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
 });
 
 export default ChatScreen;
