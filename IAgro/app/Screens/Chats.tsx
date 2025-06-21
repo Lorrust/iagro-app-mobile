@@ -95,7 +95,17 @@ const ChatScreen = () => {
   // NOVO: Hook que configura o cabeçalho da tela dinamicamente
   useLayoutEffect(() => {
     navigation.setOptions({
-      title: chatTitle ? `${chatTitle}` : "Voltar", // Você pode customizar o título aqui se quiser
+      // title: chatTitle ? `${chatTitle}` : "Diagnóstico", // Você pode customizar o título aqui se quiser
+
+      headerTitle: () => (
+        <Text 
+          style={styles.headerTitle} // Usaremos um estilo para organização
+          numberOfLines={1} 
+          ellipsizeMode="tail"
+        >
+          {chatTitle || "Diagnóstico"}
+        </Text>
+      ),
       headerRight: () => (
         <View>
           <Menu
@@ -620,6 +630,14 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F3F3F3" },
   // Padding modificado para a lista invertida
   chatContent: { paddingHorizontal: 12, paddingVertical: 10, flexGrow: 1 },
+   headerTitle: {
+    fontSize: 20,
+    fontWeight: '600', // Um peso de fonte padrão para cabeçalhos
+    color: '#028C48', // Cor primária do seu tema
+    // Define uma largura máxima para o título não empurrar o ícone do menu
+    // Você pode ajustar este valor se necessário
+    maxWidth: '85%', 
+  },
   loadMoreButton: { padding: 15, alignSelf: "center" },
   loadMoreText: { color: "#028C48", fontWeight: "bold" },
   emptyContainer: {
