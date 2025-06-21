@@ -268,6 +268,16 @@ const HomeRoute: React.FC<HomeRouteProps> = ({
               ))}
           </ScrollView>
         )}
+        {!loadingChats && !errorChats && !chats || chats?.length === 0 &&(
+          <IconButton
+            icon="camera"
+            size={50}
+            mode="contained"
+            style={styles.openCameraButton}
+            onPress={() => setNavigationIndex(1)}
+            iconColor="#fff"
+          />
+        )}
       </View>
     </View>
   );
