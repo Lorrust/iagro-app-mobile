@@ -6,6 +6,7 @@ import { TextInput, TextInputProps } from 'react-native-paper';
 interface MaskedInputCopagroProps extends Omit<TextInputProps, 'style' | 'theme' | 'mode' | 'onChangeText' | 'render'> {
   type: 'cpf' | 'cnpj';
   onChangeText?: (masked: string, unmasked: string) => void;
+  darkMode?: boolean;
 }
 
 export const MaskedInputCopagro: React.FC<MaskedInputCopagroProps> = ({
@@ -15,6 +16,7 @@ export const MaskedInputCopagro: React.FC<MaskedInputCopagroProps> = ({
   placeholder,
   value,
   editable = true,
+  darkMode = false,
   ...rest
 }) => {
   // Masks for CPF and CNPJ
@@ -30,6 +32,12 @@ export const MaskedInputCopagro: React.FC<MaskedInputCopagroProps> = ({
   // Define internal theme for roundness using react-native-paper's theme structure
   const customInputTheme = {
     roundness: 33,
+    colors: {
+      background: darkMode ? '#1E1E1E' : 'white',
+      text: darkMode ? '#FFF' : '#000',
+      placeholder: darkMode ? '#AAA' : '#666',
+      primary: '#0B845C',
+    },
   };
 
   return (
@@ -40,19 +48,27 @@ export const MaskedInputCopagro: React.FC<MaskedInputCopagroProps> = ({
       value={value}
       editable={editable}
       theme={customInputTheme}
-      outlineColor="#ccc"
+      outlineColor={darkMode ? '#555' : '#ccc'}
       activeOutlineColor="#0B845C"
-      style={[styles.input, !editable && styles.inputDisabledBackground]}
+      style={[
+        styles.input,
+        { backgroundColor: darkMode ? '#1E1E1E' : '#FFF' },
+        !editable && styles.inputDisabledBackground,
+      ]}
       render={(props) => (
         <MaskInput
           {...props}
-          value={props.value} // Use props.value from TextInput's render prop
+          value={props.value}
           onChangeText={onChangeText}
           mask={type === 'cpf' ? cpfMask : cnpjMask}
           keyboardType="number-pad"
           maxLength={type === 'cpf' ? 14 : 18}
-          placeholderTextColor="#999"
-          style={[props.style, !editable && styles.inputTextDisabled]} // Apply styles to the MaskInput itself
+          placeholderTextColor={darkMode ? '#AAA' : '#999'}
+          style={[
+            props.style,
+            { color: darkMode ? '#FFF' : '#000' },
+            !editable && styles.inputTextDisabled,
+          ]}
         />
       )}
       {...rest}

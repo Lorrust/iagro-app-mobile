@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useContext } from "react";
 import { StyleSheet, Alert, ScrollView, Image } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button, Divider, Subheading, useTheme } from "react-native-paper";
@@ -7,6 +7,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaskedInputCopagro from "../components/MaskedInputCopagro";
 import axiosService from "@/services/axiosService";
 import { router } from "expo-router";
+import { ThemeContext } from '../contexts/ThemeContext'; 
 
 // Interface do usuário
 interface User {
@@ -18,6 +19,7 @@ interface User {
 
 const UserProfileScreen = () => {
   const theme = useTheme();
+  const { isDarkTheme } = useContext(ThemeContext);
   let userUid;
   const [user, setUser] = useState<User>({
     fullName: "",
@@ -163,9 +165,9 @@ const UserProfileScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: isDarkTheme ? '#121212' : '#FAFAFA' }]}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Subheading style={styles.subheading}>
+        <Subheading style={[styles.subheading, { color: isDarkTheme ? '#FFF' : '#333' }]}>
           Gerencie suas informações
         </Subheading>
 
@@ -184,18 +186,22 @@ const UserProfileScreen = () => {
           label="Nome Completo"
           value={user.fullName}
           onChangeText={(text) => handleInputChange("fullName", text)}
+          darkMode={isDarkTheme}
+
         />
         <TextInputCopagro
           label="Nome Corporativo"
           value={user.corporateName || "Não informado"}
           onChangeText={(text) => handleInputChange("corporateName", text)}
           readOnly={(user.corporateName ?? "").length < 1}
+          darkMode={isDarkTheme}
         />
         <TextInputCopagro
           label="E-mail"
           value={user.email}
           keyboardType="email-address"
           onChangeText={(text) => handleInputChange("email", text)}
+          darkMode={isDarkTheme}
         />
 
         {(user.corporateName ?? "").length === 0 && (
@@ -204,6 +210,7 @@ const UserProfileScreen = () => {
             label="CPF"
             value={user.document}
             readOnly
+            darkMode={isDarkTheme}
           />
         )}
 
@@ -213,6 +220,7 @@ const UserProfileScreen = () => {
             label="CNPJ"
             value={user.document}
             readOnly
+            darkMode={isDarkTheme}
           />
         )}
 
