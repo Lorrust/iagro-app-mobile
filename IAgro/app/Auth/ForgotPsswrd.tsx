@@ -1,4 +1,4 @@
-import React, { useState } from 'react'; // Adicionado useState
+import React, { useState, useContext } from 'react'; // Adicionado useState
 import { ImageBackground, StyleSheet, View, Text, ActivityIndicator } from 'react-native'; // Adicionado ActivityIndicator
 import { router } from 'expo-router';
 import { BlurView } from 'expo-blur';
@@ -7,13 +7,14 @@ import { ButtonCopagro } from '../components/Button';
 import { TextInputCopagro } from '../components/ButtonTxt';
 import axiosService from '../../services/axiosService';
 import axios, { AxiosError } from 'axios'; 
-
+import { ThemeContext } from '../contexts/ThemeContext'; 
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState(''); // Usando useState em vez de React.useState
   const [loading, setLoading] = useState(false); // Estado para carregamento
   const [error, setError] = useState(''); // Estado para mensagens de erro
   const [successMessage, setSuccessMessage] = useState(''); // Estado para mensagem de sucesso
+  const { isDarkTheme } = useContext(ThemeContext);
 
   // Função para lidar com o envio do email de recuperação
   const handleSendEmail = async () => {
@@ -99,17 +100,31 @@ export default function ForgotPassword() {
 
       {/* Card central */}
       <View style={styles.bottomContainer}>
-        <View style={styles.textContainer}>
-          <Text style={styles.EsqueceuSenha}>Esqueceu a senha?</Text>
+        <View
+          style={[
+            styles.textContainer,
+            { backgroundColor: isDarkTheme ? '#1E1E1E' : '#FFF' }
+          ]}
+        >
+          <Text
+            style={[
+              styles.EsqueceuSenha,
+              { color: isDarkTheme ? '#FFF' : '#000' }
+            ]}
+          >
+            Esqueceu a senha?
+          </Text>
 
           {/* Input de Email usando TextInputCopagro */}
           <TextInputCopagro
+            label={"Email"}
             placeholder="Digite seu email"
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
             autoCapitalize="none"
             editable={!loading}
+            darkMode={isDarkTheme}
           />
 
           {/* Exibe mensagem de erro ou sucesso */}
@@ -150,7 +165,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 30,
   },
   textContainer: {
-    backgroundColor: 'white',
     borderRadius: 34,
     padding: 24,
     alignItems: 'center',

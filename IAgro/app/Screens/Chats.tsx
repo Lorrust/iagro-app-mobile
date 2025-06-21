@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useContext } from 'react';
 import {
   View,
   Text,
@@ -19,6 +19,7 @@ import * as ImagePicker from 'expo-image-picker';
 import CameraCapture from '../components/CreateCapture';
 import { IconButton } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ThemeContext } from '../contexts/ThemeContext';
 
 type ChatMessage =
   | {
@@ -61,6 +62,8 @@ const ChatScreen = () => {
 
   const flatListRef = useRef<FlatList>(null);
   const hasScrolledRef = useRef(false);
+
+  const { isDarkTheme } = useContext(ThemeContext);
 
   // --- FUNÇÃO DE BUSCA DE MENSAGENS REFEITA ---
   const fetchMessages = async (isLoadMore = false): Promise<void> => {
@@ -337,7 +340,7 @@ const ChatScreen = () => {
 
   return (
       <KeyboardAvoidingView
-        style={styles.container}
+        style={[styles.container, { backgroundColor: isDarkTheme ? '#121212' : '#F3F3F3' }]}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
       >

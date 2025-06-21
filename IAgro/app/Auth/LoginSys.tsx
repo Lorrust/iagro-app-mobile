@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useContext } from 'react';
 import {
   View,
   Text,
@@ -20,6 +20,7 @@ import axios, { AxiosError } from 'axios';
 import { ButtonCopagro } from '../components/Button';
 import TextInputCopagro from '../components/ButtonTxt';
 import DialogCopagro from '../components/Dialog';
+import { ThemeContext } from '../contexts/ThemeContext'; 
 
 const screenHeight = Dimensions.get('window').height;
 
@@ -43,6 +44,9 @@ export default function SettingsScreen() {
   const [loadingRegister, setLoadingRegister] = useState(false);
   const [registerError, setRegisterError] = useState('');
   const [cnpj, setCnpj] = useState('');
+
+  // Contexto para o tema
+  const { isDarkTheme } = useContext(ThemeContext);
 
   // Variável de animação
   const translateY = useRef(new Animated.Value(0)).current;
@@ -381,14 +385,14 @@ export default function SettingsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: isDarkTheme ? '#121212' : '#fff' }]}>
       {/* TELA DE LOGIN */}
       <Animated.View style={[styles.containerLogin, { transform: [{ translateY }] }]}>
         <LogoCopagro />
 
         <View style={styles.centeredContent}>
           <Text style={styles.title}>Login</Text>
-          <Text style={styles.subtitle}>
+          <Text style={[styles.subtitle, { color: isDarkTheme ? '#CCC' : '#444' }]}>
             Faça o login para realizar suas consultas...
           </Text>
 
@@ -402,6 +406,7 @@ export default function SettingsScreen() {
               keyboardType="email-address"
               autoCapitalize="none"
               editable={!loadingLogin}
+              darkMode={isDarkTheme}
             />
           </View>
 
@@ -414,6 +419,7 @@ export default function SettingsScreen() {
               onChangeText={setSenha}
               secureTextEntry
               editable={!loadingLogin}
+              darkMode={isDarkTheme}
             />
           </View>
 
@@ -421,13 +427,14 @@ export default function SettingsScreen() {
           {loginError ? <Text style={styles.errorText}>{loginError}</Text> : null}
 
           <TouchableOpacity onPress={() => router.push('/Auth/ForgotPsswrd')}>
-            <Text style={styles.forgotText}>Esqueceu a senha?</Text>
+          <Text style={[styles.forgotText, { color: isDarkTheme ? '#DDD' : '#444' }]}>Esqueceu a senha?</Text>         
           </TouchableOpacity>
 
           <ButtonCopagro
             onPress={() => setLoginPressed(true)}
             label={loadingLogin ? 'Entrando...' : 'Entrar'}
             disabled={loadingLogin}
+            textColor={isDarkTheme ? '#FFF' : '#FFF'} 
           />
           {/* Indicador de carregamento do login */}
           {loadingLogin && <ActivityIndicator size="small" color="#028C48" style={{ marginTop: 10 }} />}
@@ -447,14 +454,24 @@ export default function SettingsScreen() {
         <Animated.View
           style={[
             styles.registerScreen,
-            { transform: [{ translateY }] },
+            { 
+              transform: [{ translateY }],
+              backgroundColor: isDarkTheme ? '#121212' : '#fff'
+            },
           ]}
         >
           <ScrollView contentContainerStyle={styles.scrollContent}>
             <LogoCopagro />
 
             <Text style={styles.title}>Cadastro</Text>
-            <Text style={styles.subtitle}>Conte-nos um pouco sobre você...</Text>
+            <Text
+              style={[
+                styles.subtitle,
+                { color: isDarkTheme ? '#FFF' : '#000' } // cor branca no modo escuro, preta no claro
+              ]}
+            >
+              Conte-nos um pouco sobre você...
+            </Text>
 
             {/* Usando TextInputCopagro para Razão Social */}
             <View style={styles.inputGroup}>
@@ -464,6 +481,7 @@ export default function SettingsScreen() {
                 value={corporateName}
                 onChangeText={onCorporateNameChange}
                 editable={!loadingRegister}
+                darkMode={isDarkTheme}
               />
             </View>
 
@@ -479,6 +497,7 @@ export default function SettingsScreen() {
                     maxLength={18} // 14 dígitos + 4 caracteres de formatação = 18
                     keyboardType="number-pad"
                     editable={!loadingRegister}
+                    darkMode={isDarkTheme}
                   />
                 </View>
               </>
@@ -493,6 +512,7 @@ export default function SettingsScreen() {
                   maxLength={14}
                   keyboardType="number-pad"
                   editable={!loadingRegister}
+                  darkMode={isDarkTheme}
                 />
               </View>
             )}
@@ -505,6 +525,7 @@ export default function SettingsScreen() {
                 value={fullName}
                 onChangeText={setFullName}
                 editable={!loadingRegister}
+                darkMode={isDarkTheme}
               />
             </View>
 
@@ -518,6 +539,7 @@ export default function SettingsScreen() {
                 keyboardType="email-address"
                 autoCapitalize="none"
                 editable={!loadingRegister}
+                darkMode={isDarkTheme}
               />
             </View>
 
@@ -530,6 +552,7 @@ export default function SettingsScreen() {
                 onChangeText={setRegisterPassword}
                 secureTextEntry
                 editable={!loadingRegister}
+                darkMode={isDarkTheme}
               />
             </View>
 
@@ -542,6 +565,7 @@ export default function SettingsScreen() {
                 onChangeText={setConfirmPassword}
                 secureTextEntry
                 editable={!loadingRegister}
+                darkMode={isDarkTheme}
               />
             </View>
 
@@ -557,7 +581,17 @@ export default function SettingsScreen() {
             {loadingRegister && <ActivityIndicator size="small" color="#028C48" style={{ marginTop: 10 }} />}
 
             <TouchableOpacity onPress={animateDown} disabled={loadingRegister}>
-              <Text style={[styles.forgotText, { textAlign: 'center', marginTop: 20, marginRight: 0 }]}>
+              <Text
+                style={[
+                  styles.forgotText,
+                  {
+                    textAlign: 'center',
+                    marginTop: 20,
+                    marginRight: 0,
+                    color: isDarkTheme ? '#DDD' : '#444'
+                  },
+                ]}
+              >
                 Voltar ao login
               </Text>
             </TouchableOpacity>

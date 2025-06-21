@@ -3,28 +3,41 @@ import { StyleSheet } from 'react-native';
 import React from 'react';
 
 interface TextInputCopagroProps extends Omit<TextInputProps, 'style' | 'theme' | 'mode'> {
-  // You can add custom props here if needed in the future
+  darkMode?: boolean;
 }
 
 export const TextInputCopagro: React.FC<TextInputCopagroProps> = ({
-  ...rest // Capture all other standard TextInputProps (value, onChangeText, placeholder, etc.)
+  darkMode = false,
+  ...rest
 }) => {
-  // Define internal theme for roundness using react-native-paper's theme structure
   const customInputTheme = {
-    roundness: 33
+    roundness: 33,
+    colors: {
+      text: darkMode ? '#FFF' : '#000',
+      placeholder: darkMode ? '#BBB' : '#666',
+      primary: '#0B845C',
+      background: darkMode ? '#1E1E1E' : '#FFF',
+    },
   };
 
   return (
     <TextInput
       mode="outlined"
-      style={styles.input} 
+      style={[
+        styles.input,
+        {
+          backgroundColor: darkMode ? '#1E1E1E' : '#FFF',
+          color: darkMode ? '#FFF' : '#000',
+        },
+      ]}
       theme={customInputTheme}
-      outlineColor="#ccc" 
-      activeOutlineColor="#0B845C" 
-      {...rest} // Spread the rest of the props to the TextInput component
+      outlineColor={darkMode ? '#555' : '#ccc'}
+      activeOutlineColor="#0B845C"
+      {...rest}
     />
   );
 };
+
 
 const styles = StyleSheet.create({
   input: {

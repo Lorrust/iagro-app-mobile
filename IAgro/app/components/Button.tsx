@@ -7,9 +7,10 @@ interface ButtonCopagroProps {
   onPress: () => void;
   label?: string;
   disabled?: boolean;
+  textColor?: string;
 }
 
-export const ButtonCopagro: React.FC<ButtonCopagroProps> = ({ icon, onPress, label }) => {
+export const ButtonCopagro: React.FC<ButtonCopagroProps> = ({ icon, onPress, label, textColor }) => {
   
   return (
     <>
@@ -19,7 +20,7 @@ export const ButtonCopagro: React.FC<ButtonCopagroProps> = ({ icon, onPress, lab
           onPress={onPress}
           style={styles.button}
           contentStyle={styles.content}
-          labelStyle={styles.label}
+          labelStyle={[styles.label, { color: textColor ?? '#FFF' }]}
           disabled={false}
         >
           {label}
