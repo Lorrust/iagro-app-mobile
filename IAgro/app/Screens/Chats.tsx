@@ -119,7 +119,7 @@ const ChatScreen = () => {
               />
             }
             
-            contentStyle={{ marginTop: 45, left: 50, backgroundColor: paperTheme.colors.surface }}
+            contentStyle={{ marginTop: 45, backgroundColor: paperTheme.colors.surface }}
           >
             {/* O conteúdo do seu menu continua o mesmo */}
             <View style={styles.menuItemContainer}>
