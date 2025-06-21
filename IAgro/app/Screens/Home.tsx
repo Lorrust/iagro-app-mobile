@@ -118,7 +118,7 @@ const HomeRoute: React.FC<HomeRouteProps> = ({
   return (
     <View style={styles.container}>
       {plusPressed && (
-        <BlurView intensity={100} tint="light" style={styles.plusContainer}>
+        <BlurView intensity={100} tint="default" style={styles.plusContainer}>
           <View style={styles.animatedCirclesContainer}>
             <AnimatedReanimated.View
               style={[styles.animatedCircle, animatedCircle1Style]}
@@ -144,6 +144,7 @@ const HomeRoute: React.FC<HomeRouteProps> = ({
           <TouchableOpacity
             style={[StyleSheet.absoluteFill, { zIndex: 15 }]}
             activeOpacity={0}
+            // onPress={() => setPlusPressed(false)}
           />
         </BlurView>
       )}
@@ -578,13 +579,14 @@ const IntroScreen: React.FC = () => {
   };
 
   const handleAccountPress = (): void => {
-    setPlusPressed(false);
+    // setPlusPressed(false);
     router.push("/Screens/UserProfile");
+    setTimeout(() => setPlusPressed(false), 200);
   };
 
   const handleThemeToggle = () => {
     toggleTheme();
-    setPlusPressed(false);
+    setTimeout(() => setPlusPressed(false), 200);
   };
 
   const handleIndexChange = (index: number): void => {

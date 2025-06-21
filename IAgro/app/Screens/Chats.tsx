@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useContext } from 'react';
+import React, { useEffect, useState, useRef, useContext, useLayoutEffect } from 'react'; // NOVO: Adicionado useLayoutEffect
 import {
   View,
   Text,
@@ -11,13 +11,15 @@ import {
   Platform,
   ActivityIndicator,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useNavigation } from 'expo-router'; // NOVO: Adicionado useNavigation
 import axiosService from '../../services/axiosService';
 import * as ImagePicker from 'expo-image-picker';
 import CameraCapture from '../components/CreateCapture';
-import { IconButton } from 'react-native-paper';
+// NOVO: Adicionado Menu, Switch, Divider e useTheme
+import { IconButton, Menu, Switch, Divider, useTheme } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ThemeContext } from '../contexts/ThemeContext';
 
@@ -32,7 +34,7 @@ type ChatMessage =
       isLoading?: boolean;
     }
   | {
-      id: string;
+      id:string;
       isFromUser: boolean;
       type: 'diagnostico';
       titulo?: string;
@@ -44,6 +46,7 @@ type ChatMessage =
 
 const ChatScreen = () => {
   const { chatId } = useLocalSearchParams<{ chatId: string }>();
+  const [chatTitle, setChatTitle] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(true);
@@ -51,7 +54,7 @@ const ChatScreen = () => {
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [message, setMessage] = useState('');
   const [isCameraVisible, setIsCameraVisible] = useState(false);
-  const [contextEnabled, setContextEnabled] = useState(true);
+  const [contextEnabled, setContextEnabled] = useState(false);
   const [isSending, setIsSending] = useState(false);
 
   // --- NOVOS ESTADOS PARA PAGINAÇÃO CORRETA ---
@@ -64,6 +67,56 @@ const ChatScreen = () => {
   const hasScrolledRef = useRef(false);
 
   const { isDarkTheme } = useContext(ThemeContext);
+  
+  // --- NOVO: LÓGICA E ESTADO PARA O MENU DO CABEÇALHO ---
+  const navigation = useNavigation();
+  const paperTheme = useTheme(); // Pega o tema do Paper para usar as cores
+  const [menuVisible, setMenuVisible] = useState(false);
+
+  const openMenu = () => setMenuVisible(true);
+  const closeMenu = () => setMenuVisible(false);
+  
+  // A função do switch vai alterar o estado 'contextEnabled' que você já tinha
+  const onToggleContextSwitch = () => setContextEnabled(prevState => !prevState);
+
+  // NOVO: Hook que configura o cabeçalho da tela dinamicamente
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      title: chatTitle ? `${chatTitle}` : 'Voltar', // Você pode customizar o título aqui se quiser
+      headerRight: () => (
+        <Menu
+          visible={menuVisible}
+          onDismiss={closeMenu}
+          anchor={
+            <IconButton 
+              icon="dots-horizontal" 
+              onPress={openMenu} 
+              iconColor={paperTheme.colors.primary} // Usa a cor primária do tema
+            />
+          }
+        >
+          {/* Item do menu customizado para incluir o Switch */}
+          <View style={styles.menuItemContainer}>
+            <Text style={{ color: paperTheme.colors.onSurface }}>Modo diagnóstico</Text>
+            <Switch value={contextEnabled} onValueChange={onToggleContextSwitch} />
+          </View>
+          <Divider />
+          <Menu.Item
+            onPress={() => {
+              console.log("Ação 'Modo diagnóstico' pressionada");
+              Alert.alert(
+                'Modo diagnóstico',
+                'Quando você ativa o modo diagnóstico, a Inteligência Artificial usará nossa base de dados para buscar informações específicas sobre pragas, doenças e deficiências nutricionais. Isso pode levar um tempo a mais para ter uma resposta, porém trará uma precisão maior. Ao optar por desligar a opção, a IA ainda poderá trazer informações como as descritas, mas somente em caso necessário e voltará suas respostas para algo mais informativo.',
+                [{ text: 'OK', onPress: closeMenu }]
+              );
+            }}
+            title="O que isso faz?"
+            leadingIcon="information-outline"
+          />
+        </Menu>
+      ),
+    });
+  }, [navigation, menuVisible, contextEnabled, paperTheme]); // Dependências do efeito
 
   // --- FUNÇÃO DE BUSCA DE MENSAGENS REFEITA ---
   const fetchMessages = async (isLoadMore = false): Promise<void> => {
@@ -96,6 +149,9 @@ const ChatScreen = () => {
           const isUser = msg.sender === 'user';
           const timestamp = new Date((msg.timestamp?._seconds ?? 0) * 1000).toISOString();
           if (msg.diagnosis) {
+            
+            setChatTitle(msg.title || 'Diagnóstico');
+
             return {
               id: msg.id, isFromUser: isUser, type: 'diagnostico',
               titulo: msg.title ?? msg.diagnosis?.problem,
@@ -318,7 +374,9 @@ const ChatScreen = () => {
   if (loading && messages.length === 0) {
     return (
       <View style={styles.emptyContainer}>
-        <ActivityIndicator size="large" color="#028C48" />
+        {/* <ActivityIndicator size="large" color="#028C48" /> */}
+        <Ionicons name="chatbubbles-outline" size={60} color="#ccc" />
+        <Text style={styles.emptyText}>Carregando mensagens...</Text>
       </View>
     );
   }
@@ -342,7 +400,7 @@ const ChatScreen = () => {
       <KeyboardAvoidingView
         style={[styles.container, { backgroundColor: isDarkTheme ? '#121212' : '#F3F3F3' }]}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0} // Ajuste para iOS se o header for grande
       >
         <View style={{ flex: 1 }}>
           <FlatList
@@ -363,7 +421,7 @@ const ChatScreen = () => {
             keyboardShouldPersistTaps="handled"
             inverted // <<< ESSA É A MÁGICA PARA O CHAT FUNCIONAR CORRETAMENTE
           />
-          <View style={styles.inputContainer}>
+          <View style={[styles.inputContainer, {marginBottom: 0}]}>
             <TouchableOpacity onPress={() => setIsCameraVisible(true)} style={styles.iconButton}>
               <Ionicons name="camera" size={24} color="#4CAF50" />
             </TouchableOpacity>
@@ -393,9 +451,9 @@ const styles = StyleSheet.create({
   loadMoreButton: { padding: 15, alignSelf: 'center' },
   loadMoreText: { color: '#028C48', fontWeight: 'bold' },
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
-  emptyText: { marginTop: 16, fontSize: 16, color: '#aaa', textAlign: 'center' },
+  emptyText: { marginTop: 16, fontSize: 16, color: '#ccc', textAlign: 'center' },
   // MarginBottom removido ou ajustado
-  inputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', padding: 8, borderTopWidth: 1, borderColor: '#ccc' },
+  inputContainer: { flexDirection: 'row', alignItems: 'center',backgroundColor: '#fff', padding: 8, borderTopWidth: 1, borderColor: '#ccc' },
   textInput: { flex: 1, backgroundColor: '#F0F0F0', borderRadius: 20, paddingVertical: 8, paddingHorizontal: 15, marginRight: 8, fontSize: 16 },
   messageContainer: { marginVertical: 6, paddingHorizontal: 4 }, // Padding Horizontal adicionado para evitar corte
   rightAlign: { alignItems: 'flex-end' },
@@ -417,6 +475,15 @@ const styles = StyleSheet.create({
   thinkingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  // NOVO: Estilo para o item customizado do menu
+  menuItemContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    minWidth: 220, // Largura mínima para o dropdown
   },
 });
 

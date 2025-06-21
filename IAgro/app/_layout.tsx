@@ -5,8 +5,11 @@ import {
   MD3LightTheme,
   MD3DarkTheme, // Importe o tema escuro
 } from "react-native-paper";
-import { useContext } from 'react'; // Importe o useContext
-import { CustomThemeProvider, ThemeContext } from "../app/contexts/ThemeContext"; // Importe nosso contexto
+import { useContext } from "react"; // Importe o useContext
+import {
+  CustomThemeProvider,
+  ThemeContext,
+} from "../app/contexts/ThemeContext"; // Importe nosso contexto
 
 // Tema claro personalizado
 const lightTheme = {
@@ -36,7 +39,7 @@ const darkTheme = {
 function RootLayout() {
   // Pega o estado do tema do nosso contexto
   const { isDarkTheme } = useContext(ThemeContext);
-  
+
   // Escolhe o tema com base no booleano
   const theme = isDarkTheme ? darkTheme : lightTheme;
 
@@ -53,23 +56,22 @@ function RootLayout() {
         >
           {/* Suas telas (Stack.Screen) continuam aqui... */}
           <Stack.Screen name="index" options={{ headerShown: false }} />
-          <Stack.Screen name="Auth/LoginSys" options={{ title: "Login" }} />
-          <Stack.Screen
-            name="Auth/ForgotPsswrd"
-            options={{ title: "Modificar Senha" }}
-          />
-          <Stack.Screen name="Screens/Home" options={{ headerShown: false }} />
-          <Stack.Screen name="Screens/Chats" options={{ title: "Voltar" }} />
-          <Stack.Screen
-            name="Screens/UserProfile"
-            options={{ title: "Perfil de Usuário" }}
-          />
+          <Stack.Screen name="Auth/LoginSys" options={{ title: "Login" }} />
+          <Stack.Screen
+            name="Auth/ForgotPsswrd"
+            options={{ title: "Modificar Senha" }}
+          />
+          <Stack.Screen name="Screens/Home" options={{ headerShown: false }} />
+          <Stack.Screen name="Screens/Chats" options={{ title: "Voltar" }} />
+          <Stack.Screen
+            name="Screens/UserProfile"
+            options={{ title: "Perfil de Usuário" }}
+          />
         </Stack>
       </GestureHandlerRootView>
     </PaperProvider>
   );
 }
-
 
 // Layout principal que agora usa o nosso provedor de tema
 export default function Layout() {
