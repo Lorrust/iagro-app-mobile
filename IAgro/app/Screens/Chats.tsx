@@ -688,9 +688,11 @@ import React, {
    },
    inputContainer: {
      flexDirection: "row",
-     //alignItems: "center",
+     alignItems: "center",
      backgroundColor: "#fff",
-     padding: 50,
+     paddingTop: 10,
+     paddingBottom: 65,
+     paddingHorizontal: 5,
      //borderTopWidth: 1,
      borderColor: "#ccc",
      //marginBottom: 60,
