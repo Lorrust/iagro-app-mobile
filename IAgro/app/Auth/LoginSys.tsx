@@ -10,6 +10,7 @@ import {
   Dimensions,
   ActivityIndicator,
   Alert,
+  Keyboard,
 } from 'react-native';
 import { router } from 'expo-router';
 import LogoCopagro from '../components/LogoCopagro';
@@ -32,6 +33,7 @@ export default function SettingsScreen() {
   const [loadingLogin, setLoadingLogin] = useState(false);
   const [loginError, setLoginError] = useState('');
   const [dialogVisible, setDialogVisible] = useState(false);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
 
   // Estados para a tela de Cadastro
   const [registerVisible, setRegisterVisible] = useState(false);
@@ -115,6 +117,19 @@ export default function SettingsScreen() {
     setCpf(formattedValue);
   };
 
+  useEffect(() => {
+  const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
+    setKeyboardVisible(true);
+  });
+  const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
+    setKeyboardVisible(false);
+  });
+
+  return () => {
+    showSubscription.remove();
+    hideSubscription.remove();
+  };
+}, []);
 
   // Efeito para lidar com o Login
   useEffect(() => {
@@ -440,13 +455,15 @@ export default function SettingsScreen() {
           {loadingLogin && <ActivityIndicator size="small" color="#028C48" style={{ marginTop: 10 }} />}
         </View>
 
-        <TouchableOpacity
-          style={[styles.registerButtonLoginScreen, { flexDirection: 'column' }]}
-          onPress={animateUp}
-        >
-          <MaterialCommunityIcons name="chevron-up" size={40} color="#fff" />
-          <Text style={styles.registerText}>Cadastre-se</Text>
-        </TouchableOpacity>
+        {!keyboardVisible && (
+          <TouchableOpacity
+            style={[styles.registerButtonLoginScreen, { flexDirection: 'column' }]}
+            onPress={animateUp}
+          >
+            <MaterialCommunityIcons name="chevron-up" size={40} color="#fff" />
+            <Text style={styles.registerText}>Cadastre-se</Text>
+          </TouchableOpacity>
+        )}
       </Animated.View>
 
       {/* TELA DE CADASTRO */}
