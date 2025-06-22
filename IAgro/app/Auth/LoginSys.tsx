@@ -455,15 +455,18 @@ export default function SettingsScreen() {
           {loadingLogin && <ActivityIndicator size="small" color="#028C48" style={{ marginTop: 10 }} />}
         </View>
 
-        {!keyboardVisible && (
-          <TouchableOpacity
-            style={[styles.registerButtonLoginScreen, { flexDirection: 'column' }]}
-            onPress={animateUp}
-          >
-            <MaterialCommunityIcons name="chevron-up" size={40} color="#fff" />
-            <Text style={styles.registerText}>Cadastre-se</Text>
-          </TouchableOpacity>
+        {!registerVisible && (
+          <View style={styles.fixedRegisterButton}>
+            <TouchableOpacity
+              style={[styles.registerButtonLoginScreen, { flexDirection: 'column' }]}
+              onPress={animateUp}
+            >
+              <MaterialCommunityIcons name="chevron-up" size={40} color="#fff" />
+              <Text style={styles.registerText}>Cadastre-se</Text>
+            </TouchableOpacity>
+          </View>
         )}
+
       </Animated.View>
 
       {/* TELA DE CADASTRO */}
@@ -629,6 +632,13 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#fff',
+  },
+  fixedRegisterButton: {
+  position: 'absolute',
+  bottom: 0,
+  left: 0,
+  right: 0,
+  zIndex: 10, // para garantir que fique por cima
   },
   containerLogin: {
     height: '100%',

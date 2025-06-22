@@ -601,7 +601,7 @@ import React, {
        behavior={Platform.OS === "ios" ? "padding" : "height"}
        keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
      >
-       <View style={{ flex: 1 }}>
+       <View style={styles.chatWrapper}>
          <FlatList
            ref={flatListRef}
            data={messages}
@@ -687,14 +687,16 @@ import React, {
      textAlign: "center",
    },
    inputContainer: {
-     flexDirection: "row",
-     alignItems: "center",
-     backgroundColor: "#fff",
-     padding: 8,
-     borderTopWidth: 1,
-     borderColor: "#ccc",
-     marginBottom: 60,
-   },
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 8,
+    borderTopWidth: 1,
+    borderColor: "#ccc",
+  },
+  chatWrapper: {
+    flex: 1,
+  },
+
    textInput: {
      flex: 1,
      backgroundColor: "#F0F0F0",
