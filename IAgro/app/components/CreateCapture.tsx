@@ -1,20 +1,26 @@
+// React e React Native imports
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Image, Text } from 'react-native';
 import { IconButton } from 'react-native-paper';
+
+//Expo e hooks imports
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 
+// Interface para a tipagem das props do componente
 interface CameraCaptureProps {
   onPhotoCaptured: (uri: string) => void;
   onClose: () => void;
 }
 
 const CameraCapture: React.FC<CameraCaptureProps> = ({ onPhotoCaptured, onClose }) => {
-    const [permission, requestPermission] = useCameraPermissions();
-    const [cameraRef, setCameraRef] = useState<CameraView | null>(null);
-    const [galleryPermission, setGalleryPermission] = useState(false);
+    const [permission, requestPermission] = useCameraPermissions(); // Hook para gerenciar permissões da câmera
+    const [cameraRef, setCameraRef] = useState<CameraView | null>(null); // Referência para a câmera
+    const [galleryPermission, setGalleryPermission] = useState(false); // Estado para controlar a permissão da galeria
   
     useEffect(() => {
+
+      // Função para solicitar permissão de acesso à galeria
       const requestGalleryPermission = async () => {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         setGalleryPermission(status === 'granted');
@@ -23,24 +29,35 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onPhotoCaptured, onClose 
       if (!permission) {
         requestPermission();
       }
+
+      // Solicita permissão da galeria
       requestGalleryPermission();
     }, [permission]);
-  
+    
+    // Função para tirar uma foto usando a câmera
     const handleTakePhoto = async () => {
       if (cameraRef) {
+        // Captura a foto
         const photo = await cameraRef.takePictureAsync();
         if (photo?.uri) {
+
+          // Chama a função de callback com o URI da foto capturada
           onPhotoCaptured(photo.uri);
         }
       }
     };
-  
+    
+
+    // Função para abrir a galeria e selecionar uma imagem
     const handleOpenGallery = async () => {
+
+      // Verifica se a permissão da galeria foi concedida
       if (!galleryPermission) {
         alert('Você precisa permitir o acesso à galeria para escolher uma imagem.');
         return;
       }
-  
+      
+      // Abre a galeria para selecionar uma imagem
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: 'images',
         allowsEditing: true,
@@ -51,7 +68,8 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onPhotoCaptured, onClose 
         onPhotoCaptured(result.assets[0].uri); 
       }
     };
-  
+    
+    // Tela de carregamento enquanto verifica permissões
     if (!permission) {
       return (
         <View style={styles.loadingContainer}>
@@ -59,7 +77,9 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onPhotoCaptured, onClose 
         </View>
       );
     }
-  
+    
+
+    // Se a permissão for negada, exibe a mensagem
     if (!permission.granted) {
       return (
         <View style={styles.loadingContainer}>
@@ -70,12 +90,15 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onPhotoCaptured, onClose 
   
     return (
       <View style={styles.fullScreenCameraContainer}>
+
+        {/* Visualização da câmera em tela cheia */}
         <CameraView
           style={styles.fullScreenCamera}
           facing="back"
           ref={setCameraRef}
         />
         
+        {/* Botão para tirar foto */}
         <View style={styles.bottomButtonsContainer}>
           <IconButton
             icon="camera"
@@ -86,6 +109,8 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onPhotoCaptured, onClose 
             onPress={handleTakePhoto}
             style={styles.fullScreenCameraButton}
           />
+
+          {/* Botão para abrir a galeria */}
           <IconButton
             icon="image"
             size={60}
@@ -94,7 +119,8 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onPhotoCaptured, onClose 
             iconColor="#ffffff"
           />
         </View>
-  
+      
+        {/* Botão para fechar a câmera */}
         <IconButton
           icon="close"
           size={36}

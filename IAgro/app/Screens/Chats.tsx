@@ -1,3 +1,8 @@
+//OUTRA TELA PRINCIPAL COM MUITOS COMENTÁRIOS EXPLICATIVOS.
+//lER COM ATENÇÃO PARA UM BOM ENTENDIMENTO DO CÓDIGO.
+
+
+// Importações do React e hooks necessários
 import React, {
    useEffect,
    useState,
@@ -5,6 +10,7 @@ import React, {
    useContext,
    useLayoutEffect,
  } from "react";
+// Importações de componentes nativos do React Native
  import {
    View,
    Text,
@@ -19,11 +25,14 @@ import React, {
    ScrollView,
    Alert,
  } from "react-native";
+// Importações de ícones e navegação
  import { Ionicons } from "@expo/vector-icons";
  import { useLocalSearchParams, useNavigation } from "expo-router";
+// Importações de serviços, componentes e bibliotecas externas
  import axiosService from "../../services/axiosService";
  import * as ImagePicker from "expo-image-picker";
  import CameraCapture from "../components/CreateCapture";
+// Importações do React Native Paper (Material Design)
  import {
    IconButton,
    Menu,
@@ -33,67 +42,72 @@ import React, {
  } from "react-native-paper";
  import AsyncStorage from "@react-native-async-storage/async-storage";
  import { ThemeContext } from "../contexts/ThemeContext";
- 
+  // Tipo que define a estrutura das mensagens do chat
+ // Pode ser uma mensagem de texto simples ou um diagnóstico complexo
  type ChatMessage =
    | {
-       id: string;
-       isFromUser: boolean;
-       type: "text";
-       text: string;
-       timestamp: string;
-       imageUrl?: string;
-       isLoading?: boolean;
+       id: string; // ID único da mensagem
+       isFromUser: boolean; // Se a mensagem é do usuário ou da IA
+       type: "text"; // Tipo: mensagem de texto
+       text: string; // Conteúdo da mensagem
+       timestamp: string; // Data/hora da mensagem
+       imageUrl?: string; // URL da imagem (opcional)
+       isLoading?: boolean; // Se está carregando (para mensagens de "pensando...")
      }
    | {
-       id: string;
-       isFromUser: boolean;
-       type: "diagnostico";
-       titulo?: string;
-       descricao?: string;
-       problema?: string;
-       recomendacao?: string;
-       timestamp: string;
+       id: string; // ID único da mensagem
+       isFromUser: boolean; // Se a mensagem é do usuário ou da IA
+       type: "diagnostico"; // Tipo: diagnóstico da IA
+       titulo?: string; // Título do diagnóstico
+       descricao?: string; // Descrição do problema
+       problema?: string; // Problema identificado
+       recomendacao?: string; // Recomendação sugerida
+       timestamp: string; // Data/hora da mensagem
      };
- 
+  // Componente principal da tela de chat
  const ChatScreen = () => {
+   // Obtém o ID do chat da URL/parâmetros de navegação
    const { chatId } = useLocalSearchParams<{ chatId: string }>();
-   const [chatTitle, setChatTitle] = useState<string | null>(null);
-   const [messages, setMessages] = useState<ChatMessage[]>([]);
-   const [input, setInput] = useState("");
-   const [loading, setLoading] = useState(true);
-   const [error, setError] = useState<string | null>(null);
-   const [photoUri, setPhotoUri] = useState<string | null>(null);
-   const [message, setMessage] = useState("");
-   const [isCameraVisible, setIsCameraVisible] = useState(false);
-   const [contextEnabled, setContextEnabled] = useState(false);
-   const [isSending, setIsSending] = useState(false);
+   
+   // Estados principais do componente
+   const [chatTitle, setChatTitle] = useState<string | null>(null); // Título do chat
+   const [messages, setMessages] = useState<ChatMessage[]>([]); // Lista de mensagens
+   const [input, setInput] = useState(""); // Texto digitado pelo usuário
+   const [loading, setLoading] = useState(true); // Estado de carregamento inicial
+   const [error, setError] = useState<string | null>(null); // Mensagens de erro
+   const [photoUri, setPhotoUri] = useState<string | null>(null); // URI da foto capturada
+   const [message, setMessage] = useState(""); // Mensagem para acompanhar foto
+   const [isCameraVisible, setIsCameraVisible] = useState(false); // Controla exibição da câmera
+   const [contextEnabled, setContextEnabled] = useState(false); // Modo diagnóstico ativado/desativado
+   const [isSending, setIsSending] = useState(false); // Estado de envio de mensagem
  
-   // --- NOVOS ESTADOS PARA PAGINAÇÃO CORRETA ---
-   const [showLoadMore, setShowLoadMore] = useState(false);
-   const [isLoadingMore, setIsLoadingMore] = useState(false);
-   const [nextCursor, setNextCursor] = useState<string | null>(null);
-   const PAGE_SIZE = 20; // Define um tamanho fixo para cada página de mensagens
+   // Estados para paginação de mensagens
+   const [showLoadMore, setShowLoadMore] = useState(false); // Mostra botão "carregar mais"
+   const [isLoadingMore, setIsLoadingMore] = useState(false); // Estado de carregamento de mais mensagens
+   const [nextCursor, setNextCursor] = useState<string | null>(null); // Cursor para próxima página
+   const PAGE_SIZE = 20; // Número de mensagens por página
  
-   const flatListRef = useRef<FlatList>(null);
-   const hasScrolledRef = useRef(false);
+   // Referências e contextos
+   const flatListRef = useRef<FlatList>(null); // Referência para a lista de mensagens
+   const hasScrolledRef = useRef(false); // Controla se já rolou para o final uma vez
+   const { isDarkTheme } = useContext(ThemeContext); // Contexto do tema
  
-   const { isDarkTheme } = useContext(ThemeContext);
+   // Estados e hooks para o menu do cabeçalho
+   const navigation = useNavigation(); // Hook de navegação
+   const paperTheme = useTheme(); // Tema do React Native Paper
+   const [menuVisible, setMenuVisible] = useState(false); // Controla visibilidade do menu
  
-   // --- NOVO: LÓGICA E ESTADO PARA O MENU DO CABEÇALHO ---
-   const navigation = useNavigation();
-   const paperTheme = useTheme(); // Pega o tema do Paper para usar as cores
-   const [menuVisible, setMenuVisible] = useState(false);
- 
+   // Funções para controle do menu
    const openMenu = () => setMenuVisible(true);
    const closeMenu = () => setMenuVisible(false);
  
-   // A função do switch vai alterar o estado 'contextEnabled' que você já tinha
+   // Função para alternar o modo diagnóstico
    const onToggleContextSwitch = () =>
      setContextEnabled((prevState) => !prevState);
- 
-   // NOVO: Hook que configura o cabeçalho da tela dinamicamente
+   // Hook que configura o cabeçalho da tela dinamicamente
    useLayoutEffect(() => {
      navigation.setOptions({
+       // Título do cabeçalho - mostra o título do chat ou "Diagnóstico" como padrão
        headerTitle: () => (
          <Text
            style={styles.headerTitle}
@@ -103,6 +117,7 @@ import React, {
            {chatTitle || "Diagnóstico"}
          </Text>
        ),
+       // Botão do menu no lado direito do cabeçalho
        headerRight: () => (
          <View>
            <Menu
@@ -117,6 +132,7 @@ import React, {
              }
              contentStyle={{ marginTop: 45, backgroundColor: paperTheme.colors.surface }}
            >
+             {/* Item do menu com switch para modo diagnóstico */}
              <View style={styles.menuItemContainer}>
                <Text style={{ color: paperTheme.colors.onSurface }}>
                  Modo diagnóstico
@@ -127,6 +143,7 @@ import React, {
                />
              </View>
              <Divider />
+             {/* Item de ajuda sobre o modo diagnóstico */}
              <Menu.Item
                onPress={() => {
                  console.log("Ação 'Modo diagnóstico' pressionada");
@@ -144,34 +161,37 @@ import React, {
        ),
      });
    }, [navigation, menuVisible, contextEnabled, paperTheme, chatTitle]);
- 
-   // --- FUNÇÃO DE BUSCA DE MENSAGENS REFEITA COM LÓGICA DE FALLBACK ---
+   // Função principal para buscar mensagens do chat com suporte à paginação
    const fetchMessages = async (isLoadMore = false): Promise<void> => {
+     // Controla estados de loading baseado se é carregamento inicial ou paginação
      if (isLoadMore) {
-       if (isLoadingMore || !nextCursor) return;
+       if (isLoadingMore || !nextCursor) return; // Evita múltiplas requisições
        setIsLoadingMore(true);
      } else {
        setLoading(true);
      }
  
      try {
+       // Valida se o chatId foi fornecido
        if (!chatId) {
          setError("Chat ID não fornecido.");
          setLoading(false);
          return;
        }
  
+       // Monta a URL da requisição com parâmetros de paginação
        let url = `/chats/${chatId}/messages?limit=${PAGE_SIZE}&orderDirection=desc`;
        if (isLoadMore && nextCursor) {
          url += `&lastMessageId=${nextCursor}`;
        }
  
+       // Faz a requisição para buscar mensagens
        const response = await axiosService.get(url);
        const rawMessages = response.data.messages || [];
        const newNextCursor = response.data.pagination?.nextCursor || null;
-       const total = response.data.pagination?.totalSubDocs || 0; // Get totalSubDocs
+       const total = response.data.pagination?.totalSubDocs || 0; // Obtém total de mensagens
  
-       // Lógica de fallback solicitada
+       // Lógica de fallback: se não há mensagens mas total > 0, busca novamente com limite total
        if (!isLoadMore && rawMessages.length === 0 && total > 0) {
          console.warn(`Nenhuma mensagem com limit=${PAGE_SIZE}, mas total é ${total}. Buscando novamente com o total.`);
          // Tenta buscar com o limite total
@@ -180,18 +200,21 @@ import React, {
          const fullNewNextCursor = fullResponse.data.pagination?.nextCursor || null;
  
          if (Array.isArray(fullRawMessages) && fullRawMessages.length > 0) {
+           // Processa as mensagens obtidas
            const parsedMessages: ChatMessage[] = fullRawMessages.map((msg: any) => {
              const isUser = msg.sender === "user";
              const timestamp = new Date((msg.timestamp?._seconds ?? 0) * 1000).toISOString();
+             // Se é um diagnóstico, estrutura como tal
              if (msg.diagnosis) {
                setChatTitle(msg.title || "Diagnóstico");
                return { id: msg.id, isFromUser: isUser, type: "diagnostico", titulo: msg.title ?? msg.diagnosis?.problem, problema: msg.diagnosis?.problem, descricao: msg.diagnosis?.description ?? msg.content ?? "", recomendacao: msg.diagnosis?.recommendation, timestamp };
              }
+             // Senão, é uma mensagem de texto normal
              return { id: msg.id, isFromUser: isUser, type: "text", text: msg.content ?? "", imageUrl: msg.imageUrl, timestamp };
            });
            setMessages(parsedMessages);
            setNextCursor(fullNewNextCursor);
-           setShowLoadMore(!!fullNewNextCursor && fullRawMessages.length < total); // Should be false if all were fetched
+           setShowLoadMore(!!fullNewNextCursor && fullRawMessages.length < total);
          } else {
            setMessages([]);
            setNextCursor(null);
@@ -200,6 +223,7 @@ import React, {
          return; // Sai da função após o retry
        }
  
+       // Processamento normal das mensagens
        if (Array.isArray(rawMessages) && rawMessages.length > 0) {
          type MessageFromApi = any;
          const parsedMessages: ChatMessage[] = rawMessages.map(
@@ -208,6 +232,7 @@ import React, {
              const timestamp = new Date(
                (msg.timestamp?._seconds ?? 0) * 1000
              ).toISOString();
+             // Processa mensagens de diagnóstico
              if (msg.diagnosis) {
                setChatTitle(msg.title || "Diagnóstico");
  
@@ -222,6 +247,7 @@ import React, {
                  timestamp,
                };
              }
+             // Processa mensagens de texto
              return {
                id: msg.id,
                isFromUser: isUser,
@@ -233,11 +259,12 @@ import React, {
            }
          );
  
+         // Atualiza a lista de mensagens
          setMessages((prevMessages) =>
            isLoadMore ? [...parsedMessages, ...prevMessages] : parsedMessages
          );
          setNextCursor(newNextCursor);
-         setShowLoadMore(!!newNextCursor); // Only show load more if there's a next cursor
+         setShowLoadMore(!!newNextCursor); // Só mostra "carregar mais" se há próximo cursor
        } else if (!isLoadMore) {
          setMessages([]); // Limpa se não houver mensagens iniciais e não for loadMore
        }
@@ -248,6 +275,7 @@ import React, {
        );
        setError("Erro ao carregar as mensagens.");
      } finally {
+       // Reseta estados de loading
        if (isLoadMore) {
          setIsLoadingMore(false);
        } else {
@@ -255,8 +283,7 @@ import React, {
        }
      }
    };
- 
-   // --- EFEITO INICIAL REFEITO ---
+   // Efeito executado quando o chatId muda - carrega mensagens iniciais
    useEffect(() => {
      if (chatId) {
        // Reseta o estado ao trocar de chat
@@ -268,8 +295,9 @@ import React, {
      }
    }, [chatId]);
  
+   // Função para rolar para o final da conversa (início da FlatList invertida)
    const scrollToBottom = (animated = true) => {
-     // A FlatList está invertida, então rolamos para o início
+     // A FlatList está invertida, então rolamos para o início (offset 0)
      if (messages.length > 0) {
        setTimeout(
          () => flatListRef.current?.scrollToOffset({ offset: 0, animated }),
@@ -278,6 +306,7 @@ import React, {
      }
    };
  
+   // Efeito para rolar para o final apenas no carregamento inicial
    useEffect(() => {
      // Rola para o final apenas no carregamento inicial
      if (!loading && messages.length > 0 && !hasScrolledRef.current) {
@@ -285,11 +314,13 @@ import React, {
        hasScrolledRef.current = true;
      }
    }, [loading, messages]);
- 
+   // Função para enviar mensagem de texto
    const handleSend = async () => {
+     // Validações básicas
      if (input.trim() === "" || !chatId || isSending) return;
      setIsSending(true);
  
+     // Cria mensagem do usuário
      const userMessage: ChatMessage = {
        id: `${Date.now()}-user`,
        isFromUser: true,
@@ -298,6 +329,7 @@ import React, {
        timestamp: new Date().toISOString(),
      };
  
+     // Cria mensagem de "pensando..." da IA
      const thinkingMessage: ChatMessage = {
        id: "ia-thinking-placeholder",
        isFromUser: false,
@@ -309,10 +341,11 @@ import React, {
  
      // Adiciona as mensagens no início, pois a lista está invertida
      setMessages((prev) => [thinkingMessage, userMessage, ...prev]);
-     setInput("");
+     setInput(""); // Limpa o campo de entrada
      scrollToBottom();
  
      try {
+       // Obtém tokens de autenticação
        const idToken = await AsyncStorage.getItem("idToken");
        const userUid = await AsyncStorage.getItem("uid");
        if (!idToken || !userUid) {
@@ -323,6 +356,7 @@ import React, {
          return;
        }
  
+       // Envia mensagem para o servidor
        const response = await axiosService.post(
          `/chats/${userUid}/message?chat=${chatId}&context=${contextEnabled}`,
          { message: input.trim() },
@@ -330,6 +364,7 @@ import React, {
        );
        const ia = response.data.iaResponse;
  
+       // Processa resposta da IA
        if (ia?.mensagem) {
          const iaMessage: ChatMessage = {
            id: `${Date.now()}-ia`,
@@ -339,6 +374,7 @@ import React, {
            timestamp: new Date().toISOString(),
          };
  
+         // Substitui mensagem de "pensando..." pela resposta real
          setMessages((prev) => [
            iaMessage,
            ...prev.filter(
@@ -348,6 +384,7 @@ import React, {
          // Re-busca as mensagens para garantir consistência
          setTimeout(() => fetchMessages(), 1000);
        } else {
+         // Remove mensagem de "pensando..." se não há resposta
          setMessages((prev) =>
            prev.filter((m) => m.id !== "ia-thinking-placeholder")
          );
@@ -362,16 +399,19 @@ import React, {
        setIsSending(false);
      }
    };
- 
+   // Função chamada quando uma foto é capturada
    const handlePhotoCaptured = (uri: string) => {
-     setPhotoUri(uri);
-     setIsCameraVisible(false);
+     setPhotoUri(uri); // Armazena URI da foto
+     setIsCameraVisible(false); // Fecha a câmera
    };
  
+   // Função para confirmar e enviar foto com mensagem
    const handleConfirm = async () => {
+     // Validações
      if (isSending || !photoUri || !chatId || !message.trim()) return;
      setIsSending(true);
  
+     // Cria mensagem do usuário com foto
      const userMessageContent: ChatMessage = {
        id: `${Date.now()}`,
        isFromUser: true,
@@ -385,6 +425,7 @@ import React, {
      scrollToBottom();
  
      try {
+       // Obtém tokens de autenticação
        const idToken = await AsyncStorage.getItem("idToken");
        const userUid = await AsyncStorage.getItem("uid");
        if (!idToken || !userUid) {
@@ -393,6 +434,7 @@ import React, {
          return;
        }
  
+       // Prepara FormData para envio da foto
        const formData = new FormData();
        formData.append("file", {
          uri: photoUri,
@@ -401,6 +443,7 @@ import React, {
        } as any);
        formData.append("message", message.trim());
  
+       // Envia foto e mensagem
        await axiosService.post(
          `/chats/${userUid}/message?chat=${chatId}&context=${contextEnabled}`,
          formData,
@@ -412,6 +455,7 @@ import React, {
          }
        );
  
+       // Limpa estados após envio
        setPhotoUri(null);
        setMessage("");
        // Re-busca as mensagens do servidor para obter a resposta da IA e confirmar a mensagem do usuário
@@ -426,29 +470,36 @@ import React, {
      }
    };
  
+   // Função para refazer a foto
    const handleRetake = () => {
-     setPhotoUri(null);
-     setIsCameraVisible(true);
+     setPhotoUri(null); // Remove foto atual
+     setIsCameraVisible(true); // Abre câmera novamente
    };
- 
+   // Função para selecionar imagem da galeria
    const handleSelectImageFromGallery = async () => {
+     // Solicita permissão para acessar a galeria
      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
      if (status !== "granted") {
        alert("Permissão negada.");
        return;
      }
+     
+     // Abre o seletor de imagens
      const result = await ImagePicker.launchImageLibraryAsync({
        mediaTypes: ImagePicker.MediaTypeOptions.Images,
        allowsEditing: true,
        quality: 1,
      });
+     
+     // Se uma imagem foi selecionada, processa ela
      if (!result.canceled && result.assets?.[0]?.uri) {
        handlePhotoCaptured(result.assets[0].uri);
      }
    };
- 
+   // Função para renderizar cada mensagem individual na lista
    const renderMessage = ({ item }: { item: ChatMessage }) => {
      const isUser = item.isFromUser;
+     // Define cor do balão baseado no remetente e tema
      const bubbleBackgroundColor = isUser
        ? styles.userBubble.backgroundColor
        : isDarkTheme
@@ -464,17 +515,21 @@ import React, {
            isUser ? styles.rightAlign : styles.leftAlign,
          ]}
        >
+         {/* Timestamp da mensagem */}
          <Text style={[styles.timestamp, { color: isDarkTheme ? "#AAAAAA" : "gray" }]}>
            {new Date(item.timestamp).toLocaleString()}
          </Text>
+         
+         {/* Renderização de mensagem de texto */}
          {item.type === "text" && (item.text || item.imageUrl) && (
            <View
              style={[
                styles.bubble,
-               { backgroundColor: bubbleBackgroundColor }, // Usa a cor definida acima
+               { backgroundColor: bubbleBackgroundColor },
              ]}
            >
              {item.isLoading ? (
+               // Exibe loading para mensagens "pensando..."
                <View style={styles.thinkingContainer}>
                  <ActivityIndicator
                    size="small"
@@ -485,11 +540,13 @@ import React, {
                </View>
              ) : (
                <>
+                 {/* Texto da mensagem */}
                  {item.text ? (
                    <Text style={[styles.bubbleText, { color: textColor }]}>
                      {item.text}
                    </Text>
                  ) : null}
+                 {/* Imagem anexada */}
                  {item.imageUrl && (
                    <Image
                      source={{ uri: item.imageUrl }}
@@ -501,6 +558,8 @@ import React, {
              )}
            </View>
          )}
+         
+         {/* Renderização de mensagem de diagnóstico */}
          {item.type === "diagnostico" && (
            <View style={[styles.bubble, { backgroundColor: bubbleBackgroundColor }]}>
              {item.problema && (
@@ -524,7 +583,7 @@ import React, {
        </View>
      );
    };
- 
+   // Componente renderizado quando a lista está vazia
    const renderEmptyListComponent = () => (
      <View style={[styles.emptyContainer, { transform: [{ scaleY: -1 }] }]}>
        <Ionicons name="chatbubbles-outline" size={60} color="#ccc" />
@@ -534,6 +593,7 @@ import React, {
      </View>
    );
  
+   // Tela de loading inicial
    if (loading && messages.length === 0) {
      return (
        <View style={styles.emptyContainer}>
@@ -545,6 +605,7 @@ import React, {
      );
    }
  
+   // Tela da câmera
    if (isCameraVisible) {
      return (
        <CameraCapture
@@ -554,14 +615,17 @@ import React, {
      );
    }
  
+   // Tela de preview da foto
    if (photoUri) {
      return (
        <ScrollView contentContainerStyle={styles.previewContainer}>
+         {/* Exibe a foto capturada */}
          <Image
            source={{ uri: photoUri }}
            style={styles.photoPreview}
            resizeMode="contain"
          />
+         {/* Campo para descrição do problema */}
          <TextInput
            placeholder="Detalhe o seu problema (obrigatório)"
            value={message}
@@ -571,6 +635,7 @@ import React, {
            style={[styles.messageInput, { backgroundColor: isDarkTheme ? "#333333" : "white", color: isDarkTheme ? "#E0E0E0" : "black" }]}
            placeholderTextColor={isDarkTheme ? "#AAAAAA" : "gray"}
          />
+         {/* Botões de ação */}
          <View style={styles.actions}>
            <IconButton
              icon={isSending ? "loading" : "check"}
@@ -591,7 +656,7 @@ import React, {
        </ScrollView>
      );
    }
- 
+   // Renderização principal do chat
    return (
      <KeyboardAvoidingView
        style={[
@@ -602,6 +667,7 @@ import React, {
        keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
      >
        <View style={{ flex: 1 }}>
+         {/* Lista de mensagens */}
          <FlatList
            ref={flatListRef}
            data={messages}
@@ -610,6 +676,7 @@ import React, {
            contentContainerStyle={styles.chatContent}
            ListEmptyComponent={renderEmptyListComponent}
            ListFooterComponent={
+             // Botão "carregar mais" no final da lista
              showLoadMore ? (
                <TouchableOpacity
                  style={styles.loadMoreButton}
@@ -627,21 +694,28 @@ import React, {
              ) : null
            }
            keyboardShouldPersistTaps="handled"
-           inverted
+           inverted // Lista invertida para mostrar mensagens mais recentes primeiro
          />
+         
+         {/* Barra de entrada de mensagem */}
          <View style={[styles.inputContainer, { marginBottom: 0, backgroundColor: isDarkTheme ? "#222222" : "#fff", borderColor: isDarkTheme ? "#444444" : "#ccc" }]}>
+           {/* Botão da câmera */}
            <TouchableOpacity
              onPress={() => setIsCameraVisible(true)}
              style={styles.iconButton}
            >
              <Ionicons name="camera" size={24} color="#4CAF50" />
            </TouchableOpacity>
+           
+           {/* Botão da galeria */}
            <TouchableOpacity
              onPress={handleSelectImageFromGallery}
              style={styles.iconButton}
            >
              <Ionicons name="images" size={24} color="#4CAF50" />
            </TouchableOpacity>
+           
+           {/* Campo de texto */}
            <TextInput
              value={input}
              onChangeText={setInput}
@@ -650,6 +724,8 @@ import React, {
              multiline
              placeholderTextColor={isDarkTheme ? "#AAAAAA" : "gray"}
            />
+           
+           {/* Botão de enviar */}
            <TouchableOpacity onPress={handleSend} disabled={isSending}>
              <Ionicons
                name="send"
@@ -662,18 +738,27 @@ import React, {
      </KeyboardAvoidingView>
    );
  };
- 
+  // Estilos do componente
  const styles = StyleSheet.create({
+   // Container principal
    container: { flex: 1, backgroundColor: "#F3F3F3" },
+   
+   // Conteúdo da lista de mensagens
    chatContent: { paddingHorizontal: 12, paddingVertical: 10, flexGrow: 1 },
+   
+   // Título do cabeçalho
    headerTitle: {
      fontSize: 20,
      fontWeight: '600',
      color: '#028C48',
      maxWidth: '85%',
    },
+   
+   // Botão "carregar mais"
    loadMoreButton: { padding: 15, alignSelf: "center" },
    loadMoreText: { color: "#028C48", fontWeight: "bold" },
+   
+   // Container vazio/loading
    emptyContainer: {
      flex: 1,
      justifyContent: "center",
@@ -686,6 +771,8 @@ import React, {
      color: "#ccc",
      textAlign: "center",
    },
+   
+   // Container da barra de entrada
    inputContainer: {
      flexDirection: "row",
      alignItems: "center",
@@ -693,10 +780,10 @@ import React, {
      paddingTop: 10,
      paddingBottom: 65,
      paddingHorizontal: 5,
-     //borderTopWidth: 1,
      borderColor: "#ccc",
-     //marginBottom: 60,
    },
+   
+   // Campo de texto de entrada
    textInput: {
      flex: 1,
      backgroundColor: "#F0F0F0",
@@ -706,9 +793,13 @@ import React, {
      marginRight: 8,
      fontSize: 16,
    },
+   
+   // Container de cada mensagem
    messageContainer: { marginVertical: 6, paddingHorizontal: 4 },
-   rightAlign: { alignItems: "flex-end" },
-   leftAlign: { alignItems: "flex-start" },
+   rightAlign: { alignItems: "flex-end" }, // Mensagens do usuário à direita
+   leftAlign: { alignItems: "flex-start" }, // Mensagens da IA à esquerda
+   
+   // Balão da mensagem
    bubble: {
      borderRadius: 12,
      padding: 10,
@@ -719,8 +810,12 @@ import React, {
      shadowRadius: 1.41,
      elevation: 2,
    },
-   userBubble: { backgroundColor: "#4CAF50" },
-   botBubble: { backgroundColor: "#424242" },
+   
+   // Cores dos balões
+   userBubble: { backgroundColor: "#4CAF50" }, // Verde para usuário
+   botBubble: { backgroundColor: "#424242" }, // Cinza para IA
+   
+   // Textos das mensagens
    bubbleText: { color: "white", fontSize: 14 },
    boldWhite: {
      color: "white",
@@ -728,24 +823,32 @@ import React, {
      fontSize: 14,
      marginBottom: 2,
    },
+   
+   // Timestamp das mensagens
    timestamp: {
      fontSize: 10,
      color: "gray",
      marginBottom: 2,
      marginHorizontal: 5,
    },
+   
+   // Container do preview da foto
    previewContainer: {
      flexGrow: 1,
      alignItems: "center",
      justifyContent: "center",
      padding: 16,
    },
+   
+   // Preview da foto
    photoPreview: {
      width: "100%",
      aspectRatio: 1,
      borderRadius: 12,
      backgroundColor: "#ccc",
    },
+   
+   // Campo de mensagem no preview
    messageInput: {
      backgroundColor: "white",
      borderRadius: 12,
@@ -756,9 +859,13 @@ import React, {
      minHeight: 80,
      textAlignVertical: "top",
    },
+   
+   // Botões de ação
    actions: { flexDirection: "row", marginTop: 20 },
-   confirm: { backgroundColor: "green", marginRight: 20 },
-   retake: { backgroundColor: "red" },
+   confirm: { backgroundColor: "green", marginRight: 20 }, // Botão confirmar
+   retake: { backgroundColor: "red" }, // Botão refazer
+   
+   // Preview de imagem nas mensagens
    imagePreview: {
      width: 200,
      height: 200,
@@ -766,11 +873,17 @@ import React, {
      marginTop: 8,
      backgroundColor: "#ccc",
    },
+   
+   // Botões de ícone
    iconButton: { padding: 4, marginRight: 4 },
+   
+   // Container de "pensando..."
    thinkingContainer: {
      flexDirection: "row",
      alignItems: "center",
    },
+   
+   // Container de item do menu
    menuItemContainer: {
      flexDirection: "row",
      alignItems: "center",
@@ -781,4 +894,5 @@ import React, {
    },
  });
  
+ // Exporta o componente
  export default ChatScreen;

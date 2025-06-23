@@ -1,9 +1,12 @@
+//React e React Native imports
 import React, { useState, useEffect } from 'react';
 import { View, ScrollView, Image, StyleSheet } from 'react-native';
-import * as MediaLibrary from 'expo-media-library';
 import { Text, ActivityIndicator } from 'react-native-paper';
 
-// Defina uma interface para as props do componente
+// Expo imports
+import * as MediaLibrary from 'expo-media-library';
+
+// Interface para as propriedades do componente UserGalleryScreen
 interface UserGalleryScreenProps {
   onClose: () => void;
 }

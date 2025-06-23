@@ -1,7 +1,9 @@
+//React e React Native imports
 import React from 'react';
 import { Button, IconButton } from 'react-native-paper';
 import { StyleSheet } from 'react-native';
 
+//Interface para tipagem das props do componente ButtonCopagro
 interface ButtonCopagroProps {
   icon?: string;
   onPress: () => void;
@@ -12,6 +14,8 @@ interface ButtonCopagroProps {
 
 export const ButtonCopagro: React.FC<ButtonCopagroProps> = ({ icon, onPress, label, textColor }) => {
   
+  //Renderiza dois tipos de botão dependendo das props passadas
+  //Se label for passado, renderiza um botão com texto, caso contrário renderiza um botão com ícone
   return (
     <>
       {label ? (
@@ -62,8 +66,3 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
 });
-
-interface ButtonCopagroTextProps {
-  onPress: () => void;
-  label: string;
-}

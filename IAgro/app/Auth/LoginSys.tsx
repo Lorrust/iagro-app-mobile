@@ -1,3 +1,4 @@
+//React imports
 import React, { useState, useRef, useEffect, useContext } from 'react';
 import {
   View,
@@ -12,15 +13,23 @@ import {
   Alert,
   Keyboard,
 } from 'react-native';
-import { router } from 'expo-router';
-import LogoCopagro from '../components/LogoCopagro';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import axiosService from '../../services/axiosService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+//expo imports
+import { router } from 'expo-router';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+
+//Axios imports
 import axios, { AxiosError } from 'axios';
+import axiosService from '../../services/axiosService';
+
+//Components imports
+import LogoCopagro from '../components/LogoCopagro';
 import { ButtonCopagro } from '../components/Button';
 import TextInputCopagro from '../components/ButtonTxt';
 import DialogCopagro from '../components/Dialog';
+
+//Contexts imports
 import { ThemeContext } from '../contexts/ThemeContext'; 
 
 const screenHeight = Dimensions.get('window').height;
@@ -139,32 +148,32 @@ export default function SettingsScreen() {
       setLoadingLogin(true);
       setLoginError(''); // Limpa erros anteriores antes de tentar logar
 
-      // --- VALIDAÇÃO DE EMAIL E SENHA NO LADO DO CLIENTE (Adicionado/Ajustado) ---
+      // Validação de email e senha
       if (!email || !senha) {
         setLoginError('Por favor, preencha email e senha.');
         setLoadingLogin(false);
-        setLoginPressed(false); // Resetar o estado do clique
-        return; // Interrompe a execução se campos vazios
+        setLoginPressed(false); 
+        return;
       }
 
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(email)) {
         setLoginError('Por favor, insira um email válido.');
         setLoadingLogin(false);
-        setLoginPressed(false); // Resetar o estado do clique
-        return; // Interrompe a execução se email inválido
+        setLoginPressed(false);
+        return; 
       }
 
-      if (senha.length <= 8) {
+      if (senha.length < 8) {
         setLoginError('A senha deve ter pelo menos 8 caracteres.');
         setLoadingLogin(false);
-        setLoginPressed(false); // Resetar o estado do clique
-        return; // Interrompe a execução se senha inválida
+        setLoginPressed(false);
+        return;
       }
-      // --- Fim da Validação ---
 
 
       try {
+        //tenta chamar o endpoint de login da api
         const response = await axiosService.post('/auth/login', {
           email: email,
           password: senha,
@@ -172,6 +181,7 @@ export default function SettingsScreen() {
 
         console.log('Login realizado com sucesso!', response.data);
         
+        //Variavel  para salvar o UID do usuário se sucesso do login
         let savedUid = null;
         if (response.data.user?.uid) {
           savedUid = response.data.user.uid.toString();
@@ -188,6 +198,9 @@ export default function SettingsScreen() {
           console.warn('User UID não encontrado. Usuário não logado?');
         }
         
+
+        //Salva o token para permitir entrada de usuário nas rotas privadas
+        //Salva também o conteúdo do usuário para exibição em perfil
         if (response.data.idToken) {
           await AsyncStorage.setItem('idToken', response.data.idToken);
           await AsyncStorage.setItem('user', response.data.user ? JSON.stringify(response.data.user) : '');
@@ -211,7 +224,7 @@ export default function SettingsScreen() {
           });
 
           if (error.response) {
-            const status =  error.response.status;
+            const status = error.response.status;
 
             if (axios.isAxiosError(error) && error.response) {
               showErrorFromResponse(error.response, setLoginError, 'Erro no Login');
@@ -233,19 +246,15 @@ export default function SettingsScreen() {
         }
       } finally {
         setLoadingLogin(false);
-        setLoginPressed(false); // Garante que o estado é resetado mesmo em caso de erro
+        setLoginPressed(false);
       }
     };
 
-    // Este efeito roda quando loginPressed, email ou senha mudam.
-    // loginPressed=true dispara a tentativa. Mudar email/senha enquanto loading=true
-    // não fará nada até que loading volte para false e o botão seja pressionado novamente.
     authenticate();
   }, [loginPressed, email, senha]); // Dependências ajustadas
 
 
-  // Função para lidar com o Cadastro
-  // Função para lidar com o Cadastro
+  // Função para o Cadastro
   const handleRegister = async () => {
     setLoadingRegister(true);
     setRegisterError('');
@@ -288,7 +297,7 @@ export default function SettingsScreen() {
       return;
     }
 
-    const registerData: any = { // Usamos 'any' aqui para flexibilidade
+    const registerData: any = {
       fullName: fullName,
       email: registerEmail,
       password: registerPassword,
@@ -298,10 +307,10 @@ export default function SettingsScreen() {
     if (isCorporateNameFilled && isCnpjFilled) {
       registerData.corporateName = corporateName;
       registerData.cnpj = cleanedCnpjForApi;
-      // Não enviamos CPF se a Razão Social/CNPJ foi preenchida
+      // Não envia CPF se a Razão Social/CNPJ foi preenchida
     } else if (isCpfFilled) {
       registerData.cpf = cleanedCpfForApi;
-      // Não enviamos CNPJ se o CPF foi preenchido
+      // Não envia CNPJ se o CPF foi preenchido
     }
 
     console.log('Dados de cadastro a serem enviados:', registerData);
@@ -312,7 +321,6 @@ export default function SettingsScreen() {
       console.log('Usuário cadastrado com sucesso!', response.data);
       setDialogVisible(true);
       <DialogCopagro title="Sucesso" content="Cadastro realizado com sucesso! Agora você pode fazer login." visible={dialogVisible} hideDialog={() => setDialogVisible(false)} />
-      // alert('Cadastro realizado com sucesso! Agora você pode fazer login.');
 
       setCorporateName('');
       setFullName('');
@@ -411,7 +419,7 @@ export default function SettingsScreen() {
             Faça o login para realizar suas consultas...
           </Text>
 
-          {/* Usando TextInputCopagro para o Email de Login */}
+          {/* Campo de email */}
           <View style={styles.inputGroup}>
             <TextInputCopagro
               label={"Email"}
@@ -425,7 +433,7 @@ export default function SettingsScreen() {
             />
           </View>
 
-          {/* Usando TextInputCopagro para a Senha de Login */}
+          {/* Campo de senha */}
           <View style={styles.inputGroup}>
             <TextInputCopagro
               label={"Senha"}
@@ -638,7 +646,7 @@ const styles = StyleSheet.create({
   bottom: 0,
   left: 0,
   right: 0,
-  zIndex: 10, // para garantir que fique por cima
+  zIndex: 10,
   },
   containerLogin: {
     height: '100%',

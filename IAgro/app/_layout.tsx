@@ -1,17 +1,22 @@
+//Expo imports
 import { Stack } from "expo-router";
+
+//React Native imports
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import {
   PaperProvider,
   MD3LightTheme,
-  MD3DarkTheme, // Importe o tema escuro
+  MD3DarkTheme,
 } from "react-native-paper";
-import { useContext } from "react"; // Importe o useContext
+import { useContext } from "react";
+
+//Contexts imports
 import {
   CustomThemeProvider,
   ThemeContext,
-} from "../app/contexts/ThemeContext"; // Importe nosso contexto
+} from "../app/contexts/ThemeContext";
 
-// Tema claro personalizado
+// Paletas do tema claro
 const lightTheme = {
   ...MD3LightTheme,
   colors: {
@@ -23,7 +28,7 @@ const lightTheme = {
   },
 };
 
-// Tema escuro personalizado
+// Paletas do tema escuro
 const darkTheme = {
   ...MD3DarkTheme,
   colors: {
@@ -35,9 +40,9 @@ const darkTheme = {
   },
 };
 
-// Componente interno para acessar o contexto
+// Componente que fornece o contexto
 function RootLayout() {
-  // Pega o estado do tema do nosso contexto
+  // Pega o estado do tema do contexto
   const { isDarkTheme } = useContext(ThemeContext);
 
   // Escolhe o tema com base no booleano
@@ -54,7 +59,6 @@ function RootLayout() {
             headerTintColor: theme.colors.primary,
           }}
         >
-          {/* Suas telas (Stack.Screen) continuam aqui... */}
           <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="Auth/LoginSys" options={{ title: "Login" }} />
           <Stack.Screen
@@ -73,7 +77,7 @@ function RootLayout() {
   );
 }
 
-// Layout principal que agora usa o nosso provedor de tema
+// Layout principal que provem o tema em todas as telas e rotas
 export default function Layout() {
   return (
     <CustomThemeProvider>

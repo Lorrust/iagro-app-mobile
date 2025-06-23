@@ -1,21 +1,22 @@
+//React e React Native imports
 import React, { createContext, useMemo, useState, useEffect } from 'react';
 import { useColorScheme, View, StyleSheet } from 'react-native';
 
-// 1. Tipagem para o valor do nosso contexto
+// Interface do tema
 interface ThemeContextData {
   isDarkTheme: boolean;
   toggleTheme: () => void;
 }
 
-// 2. Criando o contexto com um valor padrão
+// Cria o contexto com valor padrão e a tipagem da interface
 export const ThemeContext = createContext<ThemeContextData>({
   isDarkTheme: false,
   toggleTheme: () => {},
 });
 
-// 3. Criando o nosso "Provedor" de Tema
+// Provider do tema
 export const CustomThemeProvider = ({ children }: { children: React.ReactNode }) => {
-  const systemColorScheme = useColorScheme(); // 'dark' | 'light' | null
+  const systemColorScheme = useColorScheme();
   const [isDarkTheme, setIsDarkTheme] = useState(systemColorScheme === 'dark');
 
   useEffect(() => {
@@ -25,7 +26,7 @@ export const CustomThemeProvider = ({ children }: { children: React.ReactNode })
   // Função para alternar entre temas
   const toggleTheme = () => setIsDarkTheme(prev => !prev);
 
-  // 4. Usando useMemo para otimizar o valor do contexto
+  //useMemo para otimizar o valor do contexto
   const contextValue = useMemo(
     () => ({
       isDarkTheme,
@@ -34,7 +35,7 @@ export const CustomThemeProvider = ({ children }: { children: React.ReactNode })
     [isDarkTheme]
   );
 
-  // 5. Retornando o provedor com o valor do contexto
+  // Retorna o provedor com o valor do contexto
   return (
     <ThemeContext.Provider value={contextValue}>
       <View
@@ -49,7 +50,6 @@ export const CustomThemeProvider = ({ children }: { children: React.ReactNode })
   );
 };
 
-// Estilo básico para o container
 const styles = StyleSheet.create({
   container: {
     flex: 1,

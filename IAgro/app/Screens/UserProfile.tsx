@@ -9,7 +9,7 @@ import axiosService from "@/services/axiosService";
 import { router } from "expo-router";
 import { ThemeContext } from '../contexts/ThemeContext'; 
 
-// Interface do usuário
+// Interface dos dados esperados do usuário
 interface User {
   fullName: string;
   corporateName?: string;
@@ -20,7 +20,9 @@ interface User {
 const UserProfileScreen = () => {
   const theme = useTheme();
   const { isDarkTheme } = useContext(ThemeContext);
-  let userUid;
+  
+  //Estados para armazenar os dados do usuário e os dados originais
+  // que serão usados para comparação ao salvar as alterações
   const [user, setUser] = useState<User>({
     fullName: "",
     corporateName: "",
@@ -38,6 +40,8 @@ const UserProfileScreen = () => {
   const [originalCpf, setOriginalCpf] = useState<string>("");
   const [originalCnpj, setOriginalCnpj] = useState<string>("");
 
+
+  //Hook para pegar os dados do usuário assim que construir e tela de login
   useEffect(() => {
     const fetchUserData = async () => {
       const userString = await AsyncStorage.getItem("user");
@@ -60,6 +64,8 @@ const UserProfileScreen = () => {
     fetchUserData();
   }, []);
 
+  //Função para lidar com as mudanças nos campos de entrada
+  //Atualiza o estado do usuário com os novos valores
   const handleInputChange = (field: keyof User, value: string) => {
     setUser((prevUser) => ({
       ...prevUser,
@@ -67,6 +73,12 @@ const UserProfileScreen = () => {
     }));
   };
 
+  // Função para salvar as alterações feitas pelo usuário
+  // Compara os dados atuais com os dados originais e envia apenas as alterações
+  // para o servidor. Se não houver alterações, exibe um alerta.
+  // Se houver alterações, atualiza o AsyncStorage com os novos dados do usuário.
+  // Se a alteração for no nome corporativo, ajusta o CPF e CNPJ conforme necessário.
+  // Exibe um alerta de sucesso ou erro conforme o resultado da operação.
   const handleSaveChanges = async () => {
     try {
       const payload: { [key: string]: any } = {};
@@ -129,6 +141,10 @@ const UserProfileScreen = () => {
     }
   };
 
+  // Função para lidar com a exclusão da conta do usuário
+  // Exibe um alerta de confirmação antes de prosseguir com a exclusão.
+  // Se o usuário confirmar, envia uma solicitação DELETE para a API e apaga os dados so usuário do storage, 
+  // além de redirecioná-lo para a tela de login
   const handleDeleteAccount = async () => {
     const userUid = await AsyncStorage.getItem("uid");
     Alert.alert(
@@ -182,6 +198,8 @@ const UserProfileScreen = () => {
         />
         <Divider style={styles.divider} />
 
+
+          {/* Montagem dos campos para exibição dos dados do usuário e também alteração */}
         <TextInputCopagro
           label="Nome Completo"
           value={user.fullName}
@@ -226,6 +244,7 @@ const UserProfileScreen = () => {
 
         <Divider style={styles.divider} />
 
+        {/* Botões de ação para excluir conta e salvar alterações */}
         <Button
           mode="contained"
           onPress={handleSaveChanges}

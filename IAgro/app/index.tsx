@@ -1,7 +1,12 @@
+//React Native imports
 import React, { useLayoutEffect } from 'react';
 import { ImageBackground, StyleSheet, View, Text, Button } from 'react-native';
-import { router } from 'expo-router';
+
+//Router e Expo imports
 import { BlurView } from 'expo-blur';
+import { router } from 'expo-router';
+
+//Components imports
 import { LogoCopagro } from './components/LogoCopagro';
 import { ButtonCopagro } from './components/Button';
 
@@ -14,7 +19,7 @@ export default function HomeScreen() {
     >
       <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFill} />
 
-      {/* Logo no topo */}
+      {/* Posicionamento da logo da Copagro no top da tela */}
       <View>
         <LogoCopagro />
       </View>
@@ -27,7 +32,8 @@ export default function HomeScreen() {
             Faça suas consultas e encontre a solução de seus problemas agro!
           </Text>
         </View>
-
+        
+        {/* Botão para navegar para a tela de login */}
         <ButtonCopagro
           icon='arrow-right'
           onPress={() => router.push('/Auth/LoginSys')}

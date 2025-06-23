@@ -18,7 +18,7 @@ type LogoUsersProps = {
         style={[
           styles.logo,
           { width, height },
-          style, // aplica o estilo passado como prop
+          style,
         ]}
         resizeMode="contain"
       />
