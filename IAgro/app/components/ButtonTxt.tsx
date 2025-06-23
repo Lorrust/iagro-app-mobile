@@ -1,30 +1,50 @@
+//React e React Native imports
 import { TextInput, TextInputProps } from 'react-native-paper';
 import { StyleSheet } from 'react-native';
 import React from 'react';
 
+// Interface para tipagem das props do componente TextInputCopagro
+// Herda todas as props do TextInput do React Native Paper, exceto 'style', 'theme' e 'mode'
 interface TextInputCopagroProps extends Omit<TextInputProps, 'style' | 'theme' | 'mode'> {
-  // You can add custom props here if needed in the future
+  darkMode?: boolean; // Propriedade opcional para ativar modo escuro
 }
 
+// Componente personalizado de input de texto
 export const TextInputCopagro: React.FC<TextInputCopagroProps> = ({
-  ...rest // Capture all other standard TextInputProps (value, onChangeText, placeholder, etc.)
+  darkMode = false, // Valor padrão: modo claro
+  ...rest
 }) => {
-  // Define internal theme for roundness using react-native-paper's theme structure
+
+  // Configuração do tema personalizado para o input
   const customInputTheme = {
-    roundness: 33
+    roundness: 33,
+    colors: {
+      text: darkMode ? '#FFF' : '#000',
+      placeholder: darkMode ? '#BBB' : '#666',
+      primary: '#0B845C',
+      background: darkMode ? '#1E1E1E' : '#FFF',
+    },
   };
 
   return (
     <TextInput
       mode="outlined"
-      style={styles.input} 
+      style={[
+        styles.input,
+        {
+          // Estilos dinâmicos baseados no modo escuro ou claro
+          backgroundColor: darkMode ? '#1E1E1E' : '#FFF',
+          color: darkMode ? '#FFF' : '#000',
+        },
+      ]}
       theme={customInputTheme}
-      outlineColor="#ccc" 
-      activeOutlineColor="#0B845C" 
-      {...rest} // Spread the rest of the props to the TextInput component
+      outlineColor={darkMode ? '#555' : '#ccc'}
+      activeOutlineColor="#0B845C"
+      {...rest} // Passa todas as outras props recebidas
     />
   );
 };
+
 
 const styles = StyleSheet.create({
   input: {

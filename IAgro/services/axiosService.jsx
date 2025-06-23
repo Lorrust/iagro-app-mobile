@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router'; // ou ajuste conforme seu roteamento
 
 const axiosInstance = axios.create({
-  baseURL: 'http://192.168.68.62:3000', // ajuste conforme seu back-end
+  baseURL: 'http://192.168.68.58:3000', // ajuste conforme seu back-end
   headers: {
     'Content-Type': 'application/json',
     'X-Requested-With': 'XMLHttpRequest',

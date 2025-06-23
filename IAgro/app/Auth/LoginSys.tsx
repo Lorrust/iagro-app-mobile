@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
+//React imports
+import React, { useState, useRef, useEffect, useContext } from 'react';
 import {
   View,
   Text,
@@ -10,15 +11,26 @@ import {
   Dimensions,
   ActivityIndicator,
   Alert,
+  Keyboard,
 } from 'react-native';
-import { router } from 'expo-router';
-import LogoCopagro from '../components/LogoCopagro';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import axiosService from '../../services/axiosService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+//expo imports
+import { router } from 'expo-router';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+
+//Axios imports
 import axios, { AxiosError } from 'axios';
+import axiosService from '../../services/axiosService';
+
+//Components imports
+import LogoCopagro from '../components/LogoCopagro';
 import { ButtonCopagro } from '../components/Button';
 import TextInputCopagro from '../components/ButtonTxt';
+import DialogCopagro from '../components/Dialog';
+
+//Contexts imports
+import { ThemeContext } from '../contexts/ThemeContext'; 
 
 const screenHeight = Dimensions.get('window').height;
 
@@ -28,7 +40,9 @@ export default function SettingsScreen() {
   const [senha, setSenha] = useState('');
   const [loginPressed, setLoginPressed] = useState(false);
   const [loadingLogin, setLoadingLogin] = useState(false);
-  const [loginError, setLoginError] = useState(''); // Já existe para avisos de erro
+  const [loginError, setLoginError] = useState('');
+  const [dialogVisible, setDialogVisible] = useState(false);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
 
   // Estados para a tela de Cadastro
   const [registerVisible, setRegisterVisible] = useState(false);
@@ -41,6 +55,9 @@ export default function SettingsScreen() {
   const [loadingRegister, setLoadingRegister] = useState(false);
   const [registerError, setRegisterError] = useState('');
   const [cnpj, setCnpj] = useState('');
+
+  // Contexto para o tema
+  const { isDarkTheme } = useContext(ThemeContext);
 
   // Variável de animação
   const translateY = useRef(new Animated.Value(0)).current;
@@ -109,6 +126,19 @@ export default function SettingsScreen() {
     setCpf(formattedValue);
   };
 
+  useEffect(() => {
+  const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
+    setKeyboardVisible(true);
+  });
+  const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
+    setKeyboardVisible(false);
+  });
+
+  return () => {
+    showSubscription.remove();
+    hideSubscription.remove();
+  };
+}, []);
 
   // Efeito para lidar com o Login
   useEffect(() => {
@@ -118,41 +148,40 @@ export default function SettingsScreen() {
       setLoadingLogin(true);
       setLoginError(''); // Limpa erros anteriores antes de tentar logar
 
-      // --- VALIDAÇÃO DE EMAIL E SENHA NO LADO DO CLIENTE (Adicionado/Ajustado) ---
+      // Validação de email e senha
       if (!email || !senha) {
         setLoginError('Por favor, preencha email e senha.');
         setLoadingLogin(false);
-        setLoginPressed(false); // Resetar o estado do clique
-        return; // Interrompe a execução se campos vazios
+        setLoginPressed(false); 
+        return;
       }
 
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(email)) {
         setLoginError('Por favor, insira um email válido.');
         setLoadingLogin(false);
-        setLoginPressed(false); // Resetar o estado do clique
-        return; // Interrompe a execução se email inválido
+        setLoginPressed(false);
+        return; 
       }
 
-      if (senha.length <= 8) {
+      if (senha.length < 8) {
         setLoginError('A senha deve ter pelo menos 8 caracteres.');
         setLoadingLogin(false);
-        setLoginPressed(false); // Resetar o estado do clique
-        return; // Interrompe a execução se senha inválida
+        setLoginPressed(false);
+        return;
       }
-      // --- Fim da Validação ---
 
 
       try {
+        //tenta chamar o endpoint de login da api
         const response = await axiosService.post('/auth/login', {
           email: email,
           password: senha,
         });
 
         console.log('Login realizado com sucesso!', response.data);
-        // Remover o alert aqui se o sucesso for apenas navegação e feedback visual
-        // alert('Login realizado com sucesso!');
-        // Salva o UID em escopo global
+        
+        //Variavel  para salvar o UID do usuário se sucesso do login
         let savedUid = null;
         if (response.data.user?.uid) {
           savedUid = response.data.user.uid.toString();
@@ -169,6 +198,9 @@ export default function SettingsScreen() {
           console.warn('User UID não encontrado. Usuário não logado?');
         }
         
+
+        //Salva o token para permitir entrada de usuário nas rotas privadas
+        //Salva também o conteúdo do usuário para exibição em perfil
         if (response.data.idToken) {
           await AsyncStorage.setItem('idToken', response.data.idToken);
           await AsyncStorage.setItem('user', response.data.user ? JSON.stringify(response.data.user) : '');
@@ -192,7 +224,7 @@ export default function SettingsScreen() {
           });
 
           if (error.response) {
-            const status =  error.response.status;
+            const status = error.response.status;
 
             if (axios.isAxiosError(error) && error.response) {
               showErrorFromResponse(error.response, setLoginError, 'Erro no Login');
@@ -214,19 +246,15 @@ export default function SettingsScreen() {
         }
       } finally {
         setLoadingLogin(false);
-        setLoginPressed(false); // Garante que o estado é resetado mesmo em caso de erro
+        setLoginPressed(false);
       }
     };
 
-    // Este efeito roda quando loginPressed, email ou senha mudam.
-    // loginPressed=true dispara a tentativa. Mudar email/senha enquanto loading=true
-    // não fará nada até que loading volte para false e o botão seja pressionado novamente.
     authenticate();
   }, [loginPressed, email, senha]); // Dependências ajustadas
 
 
-  // Função para lidar com o Cadastro
-  // Função para lidar com o Cadastro
+  // Função para o Cadastro
   const handleRegister = async () => {
     setLoadingRegister(true);
     setRegisterError('');
@@ -269,7 +297,7 @@ export default function SettingsScreen() {
       return;
     }
 
-    const registerData: any = { // Usamos 'any' aqui para flexibilidade
+    const registerData: any = {
       fullName: fullName,
       email: registerEmail,
       password: registerPassword,
@@ -279,10 +307,10 @@ export default function SettingsScreen() {
     if (isCorporateNameFilled && isCnpjFilled) {
       registerData.corporateName = corporateName;
       registerData.cnpj = cleanedCnpjForApi;
-      // Não enviamos CPF se a Razão Social/CNPJ foi preenchida
+      // Não envia CPF se a Razão Social/CNPJ foi preenchida
     } else if (isCpfFilled) {
       registerData.cpf = cleanedCpfForApi;
-      // Não enviamos CNPJ se o CPF foi preenchido
+      // Não envia CNPJ se o CPF foi preenchido
     }
 
     console.log('Dados de cadastro a serem enviados:', registerData);
@@ -291,7 +319,8 @@ export default function SettingsScreen() {
       const response = await axiosService.post('/users/register', registerData);
 
       console.log('Usuário cadastrado com sucesso!', response.data);
-      alert('Cadastro realizado com sucesso! Agora você pode fazer login.');
+      setDialogVisible(true);
+      <DialogCopagro title="Sucesso" content="Cadastro realizado com sucesso! Agora você pode fazer login." visible={dialogVisible} hideDialog={() => setDialogVisible(false)} />
 
       setCorporateName('');
       setFullName('');
@@ -302,7 +331,7 @@ export default function SettingsScreen() {
       setConfirmPassword('');
       setRegisterError('');
 
-      animateDown();
+      // animateDown();
 
     } catch (error) {
       console.log('Erro no cadastro:', error);
@@ -329,7 +358,11 @@ export default function SettingsScreen() {
       setLoadingRegister(false);
     }
   };
-
+  
+  const handleDialogClose = () => {
+    setDialogVisible(false);
+    animateDown();
+  };
 
   // Animação para subir (mostrar cadastro)
   const animateUp = () => {
@@ -375,18 +408,18 @@ export default function SettingsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: isDarkTheme ? '#121212' : '#fff' }]}>
       {/* TELA DE LOGIN */}
       <Animated.View style={[styles.containerLogin, { transform: [{ translateY }] }]}>
         <LogoCopagro />
 
         <View style={styles.centeredContent}>
           <Text style={styles.title}>Login</Text>
-          <Text style={styles.subtitle}>
+          <Text style={[styles.subtitle, { color: isDarkTheme ? '#CCC' : '#444' }]}>
             Faça o login para realizar suas consultas...
           </Text>
 
-          {/* Usando TextInputCopagro para o Email de Login */}
+          {/* Campo de email */}
           <View style={styles.inputGroup}>
             <TextInputCopagro
               label={"Email"}
@@ -396,10 +429,11 @@ export default function SettingsScreen() {
               keyboardType="email-address"
               autoCapitalize="none"
               editable={!loadingLogin}
+              darkMode={isDarkTheme}
             />
           </View>
 
-          {/* Usando TextInputCopagro para a Senha de Login */}
+          {/* Campo de senha */}
           <View style={styles.inputGroup}>
             <TextInputCopagro
               label={"Senha"}
@@ -408,6 +442,7 @@ export default function SettingsScreen() {
               onChangeText={setSenha}
               secureTextEntry
               editable={!loadingLogin}
+              darkMode={isDarkTheme}
             />
           </View>
 
@@ -415,25 +450,31 @@ export default function SettingsScreen() {
           {loginError ? <Text style={styles.errorText}>{loginError}</Text> : null}
 
           <TouchableOpacity onPress={() => router.push('/Auth/ForgotPsswrd')}>
-            <Text style={styles.forgotText}>Esqueceu a senha?</Text>
+          <Text style={[styles.forgotText, { color: isDarkTheme ? '#DDD' : '#444' }]}>Esqueceu a senha?</Text>         
           </TouchableOpacity>
 
           <ButtonCopagro
             onPress={() => setLoginPressed(true)}
             label={loadingLogin ? 'Entrando...' : 'Entrar'}
             disabled={loadingLogin}
+            textColor={isDarkTheme ? '#FFF' : '#FFF'} 
           />
           {/* Indicador de carregamento do login */}
           {loadingLogin && <ActivityIndicator size="small" color="#028C48" style={{ marginTop: 10 }} />}
         </View>
 
-        <TouchableOpacity
-          style={[styles.registerButtonLoginScreen, { flexDirection: 'column' }]}
-          onPress={animateUp}
-        >
-          <MaterialCommunityIcons name="chevron-up" size={40} color="#fff" />
-          <Text style={styles.registerText}>Cadastre-se</Text>
-        </TouchableOpacity>
+        {!registerVisible && (
+          <View style={styles.fixedRegisterButton}>
+            <TouchableOpacity
+              style={[styles.registerButtonLoginScreen, { flexDirection: 'column' }]}
+              onPress={animateUp}
+            >
+              <MaterialCommunityIcons name="chevron-up" size={40} color="#fff" />
+              <Text style={styles.registerText}>Cadastre-se</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
       </Animated.View>
 
       {/* TELA DE CADASTRO */}
@@ -441,14 +482,24 @@ export default function SettingsScreen() {
         <Animated.View
           style={[
             styles.registerScreen,
-            { transform: [{ translateY }] },
+            { 
+              transform: [{ translateY }],
+              backgroundColor: isDarkTheme ? '#121212' : '#fff'
+            },
           ]}
         >
           <ScrollView contentContainerStyle={styles.scrollContent}>
             <LogoCopagro />
 
             <Text style={styles.title}>Cadastro</Text>
-            <Text style={styles.subtitle}>Conte-nos um pouco sobre você...</Text>
+            <Text
+              style={[
+                styles.subtitle,
+                { color: isDarkTheme ? '#FFF' : '#000' } // cor branca no modo escuro, preta no claro
+              ]}
+            >
+              Conte-nos um pouco sobre você...
+            </Text>
 
             {/* Usando TextInputCopagro para Razão Social */}
             <View style={styles.inputGroup}>
@@ -458,6 +509,7 @@ export default function SettingsScreen() {
                 value={corporateName}
                 onChangeText={onCorporateNameChange}
                 editable={!loadingRegister}
+                darkMode={isDarkTheme}
               />
             </View>
 
@@ -473,6 +525,7 @@ export default function SettingsScreen() {
                     maxLength={18} // 14 dígitos + 4 caracteres de formatação = 18
                     keyboardType="number-pad"
                     editable={!loadingRegister}
+                    darkMode={isDarkTheme}
                   />
                 </View>
               </>
@@ -487,6 +540,7 @@ export default function SettingsScreen() {
                   maxLength={14}
                   keyboardType="number-pad"
                   editable={!loadingRegister}
+                  darkMode={isDarkTheme}
                 />
               </View>
             )}
@@ -499,6 +553,7 @@ export default function SettingsScreen() {
                 value={fullName}
                 onChangeText={setFullName}
                 editable={!loadingRegister}
+                darkMode={isDarkTheme}
               />
             </View>
 
@@ -512,6 +567,7 @@ export default function SettingsScreen() {
                 keyboardType="email-address"
                 autoCapitalize="none"
                 editable={!loadingRegister}
+                darkMode={isDarkTheme}
               />
             </View>
 
@@ -524,6 +580,7 @@ export default function SettingsScreen() {
                 onChangeText={setRegisterPassword}
                 secureTextEntry
                 editable={!loadingRegister}
+                darkMode={isDarkTheme}
               />
             </View>
 
@@ -536,6 +593,7 @@ export default function SettingsScreen() {
                 onChangeText={setConfirmPassword}
                 secureTextEntry
                 editable={!loadingRegister}
+                darkMode={isDarkTheme}
               />
             </View>
 
@@ -551,13 +609,29 @@ export default function SettingsScreen() {
             {loadingRegister && <ActivityIndicator size="small" color="#028C48" style={{ marginTop: 10 }} />}
 
             <TouchableOpacity onPress={animateDown} disabled={loadingRegister}>
-              <Text style={[styles.forgotText, { textAlign: 'center', marginTop: 20, marginRight: 0 }]}>
+              <Text
+                style={[
+                  styles.forgotText,
+                  {
+                    textAlign: 'center',
+                    marginTop: 20,
+                    marginRight: 0,
+                    color: isDarkTheme ? '#DDD' : '#444'
+                  },
+                ]}
+              >
                 Voltar ao login
               </Text>
             </TouchableOpacity>
           </ScrollView>
         </Animated.View>
       )}
+      <DialogCopagro 
+        title="Sucesso" 
+        content="Cadastro realizado com sucesso! Agora você pode fazer login." 
+        visible={dialogVisible} 
+        hideDialog={handleDialogClose} 
+      />
     </SafeAreaView>
   );
 }
@@ -566,6 +640,13 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#fff',
+  },
+  fixedRegisterButton: {
+  position: 'absolute',
+  bottom: 0,
+  left: 0,
+  right: 0,
+  zIndex: 10,
   },
   containerLogin: {
     height: '100%',
