@@ -1,0 +1,75 @@
+services:
+
+  nginx:
+    image: nginx:alpine
+    container_name: nginx_reverse_proxy
+    ports:
+      - "8080:80"  # Maps host port 8080 to container port 80 (HTTP)
+    volumes:
+      - ./nginx-dev.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx_cache_setup.conf:/etc/nginx/conf.d/00-cache-setup.conf:ro
+      - nginx_cache_data:/var/cache/nginx
+
+    depends_on:
+      - nest-api-dev # Nginx depends the development API
+      # - nest-api-prod # Nginx depends the production API
+
+    restart: unless-stopped
+
+  redis:
+    image: redis:alpine
+    container_name: redis-cache
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis-data:/data
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  nest-api-dev:
+    container_name: nest-api-dev
+    image: guichardx2/iagro-nest-api:dev
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile.dev
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+    depends_on:
+      redis:
+        condition: service_healthy
+    # working_dir: /usr/src/nest-api-dev
+    # volumes:
+    #   - .:/usr/src/nest-api-dev
+    #   - /usr/src/nest-api-dev/node_modules
+    command: ["npm", "run", "start:dev"]
+    restart: unless-stopped
+
+  nest-api-prod:
+    container_name: nest-api-prod
+    image: guichardx2/iagro-nest-api:latest
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile
+    ports:
+      - "3000:3001"
+    environment:
+      - NODE_ENV=production
+    depends_on:
+      redis:
+        condition: service_healthy
+    # working_dir: /usr/src/nest-api-prod
+    command: ["npm", "run", "start:prod"]
+    restart: unless-stopped
+
+volumes:
+  redis-data:
+  nginx_cache_data: {}
