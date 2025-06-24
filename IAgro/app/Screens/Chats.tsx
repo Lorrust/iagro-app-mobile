@@ -362,33 +362,49 @@ import React, {
          { message: input.trim() },
          { headers: { Authorization: `Bearer ${idToken}` } }
        );
-       const ia = response.data.iaResponse;
- 
-       // Processa resposta da IA
-       if (ia?.mensagem) {
-         const iaMessage: ChatMessage = {
-           id: `${Date.now()}-ia`,
-           isFromUser: false,
-           type: "text",
-           text: ia.mensagem,
-           timestamp: new Date().toISOString(),
-         };
- 
-         // Substitui mensagem de "pensando..." pela resposta real
-         setMessages((prev) => [
-           iaMessage,
-           ...prev.filter(
-             (m) => m.id !== "ia-thinking-placeholder" && m.id !== userMessage.id
-           ),
-         ]);
-         // Re-busca as mensagens para garantir consistência
-         setTimeout(() => fetchMessages(), 1000);
-       } else {
-         // Remove mensagem de "pensando..." se não há resposta
-         setMessages((prev) =>
-           prev.filter((m) => m.id !== "ia-thinking-placeholder")
-         );
-       }
+        const ia = response.data.iaResponse;
+
+        if (ia) {
+            // 3. Crie o objeto da mensagem da IA (pode ser texto ou diagnóstico)
+            let iaMessage: ChatMessage;
+
+            // Verifica se é um diagnóstico completo ou uma mensagem de texto simples
+            if (ia.titulo && ia.descricao) {
+                iaMessage = {
+                    id: `${Date.now()}-ia-diag`,
+                    isFromUser: false,
+                    type: "diagnostico",
+                    titulo: ia.titulo,
+                    problema: ia.tipo, // ou ia.problema, ajuste conforme o nome do campo
+                    descricao: ia.descricao,
+                    recomendacao: ia.recomendacao,
+                    timestamp: new Date().toISOString(),
+                };
+            } else { // Caso seja uma resposta de texto simples
+                 iaMessage = {
+                    id: `${Date.now()}-ia-text`,
+                    isFromUser: false,
+                    type: "text",
+                    text: ia.mensagem, // ou o campo que contém o texto da IA
+                    timestamp: new Date().toISOString(),
+                };
+            }
+
+            // 4. ATUALIZAÇÃO CRÍTICA DO ESTADO:
+            // Substitui apenas a mensagem "pensando..." pela resposta final da IA.
+            // A mensagem do usuário (userMessage) NUNCA é removida.
+            setMessages((prev) => [
+                iaMessage,
+                ...prev.filter((m) => m.id !== "ia-thinking-placeholder"),
+            ]);
+
+        } else {
+            // Se não houver resposta da IA, apenas remove o "pensando..."
+            setMessages((prev) =>
+                prev.filter((m) => m.id !== "ia-thinking-placeholder")
+            );
+        }
+
      } catch (error) {
        console.error("Erro ao enviar mensagem:", error);
        setMessages((prev) =>
@@ -413,16 +429,31 @@ import React, {
  
      // Cria mensagem do usuário com foto
      const userMessageContent: ChatMessage = {
-       id: `${Date.now()}`,
+       id: `${Date.now()}-user-img`,
        isFromUser: true,
        type: "text",
        text: message.trim(),
        timestamp: new Date().toISOString(),
        imageUrl: photoUri,
      };
+
+     // Status de IA "pensando..." placeholder
+    const thinkingMessage: ChatMessage = {
+        id: "ia-thinking-placeholder",
+        isFromUser: false,
+        type: "text",
+        text: "A IA está analisando a imagem...",
+        timestamp: new Date().toISOString(),
+        isLoading: true,
+    };
+
+
      // Adiciona a mensagem do usuário na UI imediatamente
-     setMessages((prev) => [userMessageContent, ...prev]);
+     setMessages((prev) => [thinkingMessage, userMessageContent, ...prev]);
      scrollToBottom();
+
+     setPhotoUri(null);
+      setMessage("");
  
      try {
        // Obtém tokens de autenticação
@@ -431,6 +462,7 @@ import React, {
        if (!idToken || !userUid) {
          alert("Autenticação falhou.");
          setIsSending(false);
+         setMessages((prev) => prev.filter((m) => m.id !== "ia-thinking-placeholder"));
          return;
        }
  
@@ -438,13 +470,13 @@ import React, {
        const formData = new FormData();
        formData.append("file", {
          uri: photoUri,
-         type: "image/png",
-         name: "foto.png",
+         type: "image/jpeg",
+         name: "foto.jpg",
        } as any);
-       formData.append("message", message.trim());
+       formData.append("message", userMessageContent.text);
  
        // Envia foto e mensagem
-       await axiosService.post(
+       const response= await axiosService.post(
          `/chats/${userUid}/message?chat=${chatId}&context=${contextEnabled}`,
          formData,
          {
@@ -454,17 +486,49 @@ import React, {
            },
          }
        );
- 
-       // Limpa estados após envio
-       setPhotoUri(null);
-       setMessage("");
-       // Re-busca as mensagens do servidor para obter a resposta da IA e confirmar a mensagem do usuário
-       setTimeout(() => fetchMessages(), 2000);
+
+       const ia= response.data.iaResponse;
+
+       if (ia) {
+            let iaMessage: ChatMessage;
+
+            if (ia.tipo && ia.descricao) {
+                iaMessage = {
+                    id: `${Date.now()}-ia-diag`,
+                    isFromUser: false,
+                    type: "diagnostico",
+                    titulo: ia.categoria, 
+                    problema: ia.tipo, 
+                    descricao: ia.descricao,
+                    recomendacao: ia.recomendacao,
+                    timestamp: new Date().toISOString(),
+                };
+            } else {
+                 iaMessage = {
+                    id: `${Date.now()}-ia-text`,
+                    isFromUser: false,
+                    type: "text",
+                    text: ia.mensagem || "Não foi possível analisar a imagem.",
+                    timestamp: new Date().toISOString(),
+                };
+            }
+
+            // Substitui o "pensando..." pela resposta final.
+            setMessages((prev) => [
+                iaMessage,
+                ...prev.filter((m) => m.id !== "ia-thinking-placeholder"),
+            ]);
+
+        } else {
+            // Se não houver resposta, apenas remove o "pensando..."
+            setMessages((prev) => prev.filter((m) => m.id !== "ia-thinking-placeholder"));
+        }
+      
      } catch (error) {
        console.error("Erro ao enviar foto:", error);
        alert("Erro ao enviar a foto.");
        // Remove a mensagem otimista em caso de erro
-       setMessages((prev) => prev.filter((m) => m.id !== userMessageContent.id));
+       setMessages((prev) => prev.filter((m) => m.id !== userMessageContent.id && m.id !== 'ia-thinking-placeholder'));
      } finally {
        setIsSending(false);
      }
