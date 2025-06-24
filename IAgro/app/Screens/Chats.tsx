@@ -32,6 +32,7 @@ import React, {
  import axiosService from "../../services/axiosService";
  import * as ImagePicker from "expo-image-picker";
  import CameraCapture from "../components/CreateCapture";
+ import MarkdownRenderer from "../components/MarkdownRenderer";
 // Importações do React Native Paper (Material Design)
  import {
    IconButton,
@@ -59,6 +60,7 @@ import React, {
        isFromUser: boolean; // Se a mensagem é do usuário ou da IA
        type: "diagnostico"; // Tipo: diagnóstico da IA
        titulo?: string; // Título do diagnóstico
+       categoria?: string; // Categoria do diagnóstico
        descricao?: string; // Descrição do problema
        problema?: string; // Problema identificado
        recomendacao?: string; // Recomendação sugerida
@@ -363,19 +365,21 @@ import React, {
          { headers: { Authorization: `Bearer ${idToken}` } }
        );
         const ia = response.data.iaResponse;
+        console.log(ia.categoria)
 
         if (ia) {
             // 3. Crie o objeto da mensagem da IA (pode ser texto ou diagnóstico)
             let iaMessage: ChatMessage;
 
             // Verifica se é um diagnóstico completo ou uma mensagem de texto simples
-            if (ia.titulo && ia.descricao) {
+            if ((ia.problema || ia.tipo) && ia.descricao) {
                 iaMessage = {
                     id: `${Date.now()}-ia-diag`,
                     isFromUser: false,
                     type: "diagnostico",
-                    titulo: ia.titulo,
-                    problema: ia.tipo, // ou ia.problema, ajuste conforme o nome do campo
+                    titulo: ia.problema || ia.tipo,
+                    categoria: ia.categoria,
+                    problema: ia.problema || ia.tipo,
                     descricao: ia.descricao,
                     recomendacao: ia.recomendacao,
                     timestamp: new Date().toISOString(),
@@ -390,9 +394,8 @@ import React, {
                 };
             }
 
-            // 4. ATUALIZAÇÃO CRÍTICA DO ESTADO:
+            
             // Substitui apenas a mensagem "pensando..." pela resposta final da IA.
-            // A mensagem do usuário (userMessage) NUNCA é removida.
             setMessages((prev) => [
                 iaMessage,
                 ...prev.filter((m) => m.id !== "ia-thinking-placeholder"),
@@ -492,13 +495,14 @@ import React, {
        if (ia) {
             let iaMessage: ChatMessage;
 
-            if (ia.tipo && ia.descricao) {
+            if ((ia.problema || ia.tipo) && ia.descricao) {
                 iaMessage = {
                     id: `${Date.now()}-ia-diag`,
                     isFromUser: false,
                     type: "diagnostico",
-                    titulo: ia.categoria, 
-                    problema: ia.tipo, 
+                    titulo: ia.problema || ia.tipo, 
+                    categoria: ia.categoria,
+                    problema: ia.problema || ia.tipo, 
                     descricao: ia.descricao,
                     recomendacao: ia.recomendacao,
                     timestamp: new Date().toISOString(),
@@ -625,24 +629,43 @@ import React, {
          
          {/* Renderização de mensagem de diagnóstico */}
          {item.type === "diagnostico" && (
-           <View style={[styles.bubble, { backgroundColor: bubbleBackgroundColor }]}>
-             {item.problema && (
-               <Text style={styles.boldWhite}>Problema: {item.problema}</Text>
-             )}
-             {item.titulo && (
-               <Text style={styles.boldWhite}>Praga: {item.titulo}</Text>
-             )}
-             {item.descricao && (
-               <Text style={styles.bubbleText}>
-                 Descrição: {item.descricao}
-               </Text>
-             )}
-             {item.recomendacao && (
-               <Text style={styles.bubbleText}>
-                 Recomendação: {item.recomendacao}
-               </Text>
-             )}
-           </View>
+          
+          <View style={[styles.bubble, { backgroundColor: bubbleBackgroundColor }]}>
+                {item.titulo && (
+                    <Text style={styles.diagnosisTitle}>
+                        {item.titulo}
+                    </Text>
+                )}
+
+                {item.problema && (
+                    <Text style={styles.diagnosisSubtitle}>
+                        Problema: {item.problema}
+                    </Text>
+                )}
+
+                {item.categoria && (
+                    <Text style={styles.diagnosisSubtitle}>
+                        Categoria: {item.categoria}
+                    </Text>
+                )}
+                
+                {/* Divisor visual para separar as seções */}
+                <View style={styles.divider} />
+
+                {item.descricao && (
+                    <>
+                        <Text style={styles.sectionTitle}>Descrição</Text>
+                        <MarkdownRenderer content={item.descricao} />
+                    </>
+                )}
+
+                {item.recomendacao && (
+                    <>
+                        <Text style={styles.sectionTitle}>Recomendação</Text>
+                        <MarkdownRenderer content={item.recomendacao} />
+                    </>
+                )}
+            </View>
          )}
        </View>
      );
@@ -887,6 +910,31 @@ import React, {
      fontSize: 14,
      marginBottom: 2,
    },
+
+    diagnosisTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: 'white',
+        marginBottom: 4,
+    },
+    diagnosisSubtitle: {
+        fontSize: 14,
+        fontStyle: 'italic',
+        color: '#E0E0E0',
+        marginBottom: 12,
+    },
+    divider: {
+        height: 1,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        marginVertical: 8,
+    },
+    sectionTitle: {
+        fontSize: 15,
+        fontWeight: 'bold',
+        color: 'white',
+        marginBottom: 6,
+        marginTop: 8,
+    },
    
    // Timestamp das mensagens
    timestamp: {

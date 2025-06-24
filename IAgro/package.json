@@ -41,6 +41,7 @@
     "react-native": "0.76.8",
     "react-native-gesture-handler": "~2.20.2",
     "react-native-image-picker": "^8.2.0",
+    "react-native-markdown-display": "^7.0.2",
     "react-native-mask-input": "^1.2.3",
     "react-native-paper": "^5.13.3",
     "react-native-reanimated": "~3.16.1",
