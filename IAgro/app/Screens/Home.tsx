@@ -9,6 +9,7 @@ import {
   StyleSheet,
   Image,
   ScrollView,
+  RefreshControl,
   ActivityIndicator,
   TouchableOpacity,
   ViewStyle,
@@ -206,7 +207,11 @@ const HomeRoute: React.FC<HomeRouteProps> = ({
         {!loadingChats && !errorChats && !chats || chats?.length === 0 && (
           <View style={styles.centeredContent}>
             <Image
-              source={require("../../assets/images/intro.png")}
+              source={
+                theme.dark
+                  ? require("../../assets/images/white-intro.png")
+                  : require("../../assets/images/intro.png")
+              }
               style={styles.illustration}
               resizeMode="contain"
             />
@@ -214,10 +219,6 @@ const HomeRoute: React.FC<HomeRouteProps> = ({
               Análises e consultas fenológicas aparecerão {"\n"} aqui após sua
               primeira foto
             </Text>
-            <Image
-              source={require("../../assets/images/seta.png")}
-              style={styles.seta}
-            />
           </View>
         )}
         
@@ -228,6 +229,13 @@ const HomeRoute: React.FC<HomeRouteProps> = ({
             showsVerticalScrollIndicator={true}
             bounces={false}
             keyboardShouldPersistTaps="handled"
+            refreshControl={
+              <RefreshControl
+                refreshing={loadingChats}
+                onRefresh={fetchUserChats}
+                colors={[theme.colors.primary]}
+              />
+            }
           >
             {filteredChats.map((chat, index) => (
               <View key={chat.id} style={styles.chatItemContainer}>
@@ -550,6 +558,9 @@ const IntroScreen: React.FC = () => {
       const rawChats = response.data.chats ?? [];
       const total = response.data.pagination?.totalDocs ?? 0;
       
+
+      console.debug("Fetched user chats:", rawChats.length);
+
       // Se não há chats mas total > 0, busca todos os chats
       if (rawChats.length === 0 && total > 0 && !overrideLimit) {
         return fetchUserChats(total);
@@ -986,7 +997,7 @@ const getStyles = (theme: any) =>
     // Campo de busca
     searchInput: {
       width: "90%",
-      marginTop: 20,
+      marginTop: 25,
       backgroundColor: theme.colors.surface,
       borderRadius: 10,
       paddingHorizontal: 10,
@@ -1006,7 +1017,6 @@ const getStyles = (theme: any) =>
     illustration: {
       width: "100%",
       height: 450,
-      marginTop: 0,
       marginBottom: 20,
     },
     
