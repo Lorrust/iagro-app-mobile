@@ -264,7 +264,7 @@ import React, {
  
          // Atualiza a lista de mensagens
          setMessages((prevMessages) =>
-           isLoadMore ? [...parsedMessages, ...prevMessages] : parsedMessages
+           isLoadMore ? [...prevMessages, ...parsedMessages] : parsedMessages
          );
          setNextCursor(newNextCursor);
          setShowLoadMore(!!newNextCursor); // Só mostra "carregar mais" se há próximo cursor
