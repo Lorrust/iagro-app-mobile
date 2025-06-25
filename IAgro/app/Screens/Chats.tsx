@@ -192,7 +192,8 @@ import React, {
        const rawMessages = response.data.messages || [];
        const newNextCursor = response.data.pagination?.nextCursor || null;
        const total = response.data.pagination?.totalSubDocs || 0; // Obtém total de mensagens
- 
+       
+       console.log(response.data.pagination)
        // Lógica de fallback: se não há mensagens mas total > 0, busca novamente com limite total
        if (!isLoadMore && rawMessages.length === 0 && total > 0) {
          console.warn(`Nenhuma mensagem com limit=${PAGE_SIZE}, mas total é ${total}. Buscando novamente com o total.`);
